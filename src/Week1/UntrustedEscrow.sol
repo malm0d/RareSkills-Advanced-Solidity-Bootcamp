@@ -20,23 +20,24 @@ contract UntrustedEscrow is Ownable2Step {
         address token;
         uint256 amount;
         uint256 releaseTime;
-        bool isValid;
+        bool isActive;
     }
 
     mapping(uint256 => Escrow) public escrows;
     mapping(address => uint256[]) public buyerEscrows;
     mapping(address => uint256[]) public sellerEscrows;
 
-    event EscrowCreated(
+    event Deposit(
         uint256 indexed escrowId,
         address indexed buyer,
         address indexed seller,
         address token,
         uint256 amount,
         uint256 releaseTime,
-        bool isValid
+        bool isActive
     );
-    event EscrowReleased(uint256 indexed escrowId);
+    event Withdraw(uint256 indexed escrowId);
+    event Cancel(uint256 indexed escrowId);
 
     constructor() Ownable(msg.sender) {}
 
@@ -44,7 +45,7 @@ contract UntrustedEscrow is Ownable2Step {
         LOCK_TIME = timeInDays * 1 days;
     }
 
-    function createEscrow(address _seller, address _token, uint256 _amount) external {
+    function deposit(address _seller, address _token, uint256 _amount) external returns (uint256) {
         require(_seller != address(0), "Seller address cannot be zero");
         require(_amount > 0, "Amount must be greater than zero");
         require(!(IERC20(_token).balanceOf(msg.sender) < _amount), "Amount must be less than or equal to balance");
@@ -58,17 +59,38 @@ contract UntrustedEscrow is Ownable2Step {
             token: _token,
             amount: _amount,
             releaseTime: newReleaseTime,
-            isValid: true
+            isActive: true
         });
         buyerEscrows[msg.sender].push(newEscrowId);
         sellerEscrows[_seller].push(newEscrowId);
 
-        emit EscrowCreated(newEscrowId, msg.sender, _seller, _token, _amount, newReleaseTime, true);
+        emit Deposit(newEscrowId, msg.sender, _seller, _token, _amount, newReleaseTime, true);
+        return newEscrowId;
     }
 
-    function releaseEscrow(uint256 escrowId) external {}
+    function withdraw(uint256 escrowId) external {
+        require(escrowId < escrowIdCounter, "Escrow does not exist");
+        Escrow memory escrow = escrows[escrowId];
+        require(escrow.isActive, "Escrow is no longer active");
+        require(escrow.releaseTime < block.timestamp, "Escrow is not yet released");
+        require(msg.sender == escrow.seller, "Only seller can withdraw");
 
-    function cancelEscrow(uint256 escrowId) external {}
+        escrow.isActive = false;
+        escrow.amount = 0;
+        IERC20(escrow.token).safeTransfer(msg.sender, escrow.amount);
+
+        emit Withdraw(escrowId);
+    }
+
+    function cancel(uint256 escrowId) external {
+        require(escrowId < escrowIdCounter, "Escrow does not exist");
+        Escrow memory escrow = escrows[escrowId];
+        require(escrow.isActive, "Escrow is no longer active");
+        require(msg.sender == escrow.buyer, "Only buyer can cancel");
+        escrow.isActive = false;
+
+        emit Cancel(escrowId);
+    }
 
     function getEscrowDetails(uint256 escrowId) external view returns (Escrow memory) {
         return escrows[escrowId];
