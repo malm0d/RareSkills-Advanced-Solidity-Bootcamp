@@ -51,7 +51,7 @@ contract UntrustedEscrow is Ownable2Step {
         require(!(IERC20(_token).balanceOf(msg.sender) < _amount), "Amount must be less than or equal to balance");
 
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        uint256 newEscrowId = escrowIdCounter++;
+        uint256 newEscrowId = escrowIdCounter + 1;
         uint256 newReleaseTime = block.timestamp + LOCK_TIME;
         escrows[newEscrowId] = Escrow({
             buyer: msg.sender,
@@ -61,6 +61,7 @@ contract UntrustedEscrow is Ownable2Step {
             releaseTime: newReleaseTime,
             isActive: true
         });
+        escrowIdCounter = newEscrowId;
         buyerEscrows[msg.sender].push(newEscrowId);
         sellerEscrows[_seller].push(newEscrowId);
 
@@ -69,21 +70,22 @@ contract UntrustedEscrow is Ownable2Step {
     }
 
     function withdraw(uint256 escrowId) external {
-        require(escrowId < escrowIdCounter, "Escrow does not exist");
+        require(!(escrowId > escrowIdCounter), "Escrow does not exist");
         Escrow memory escrow = escrows[escrowId];
         require(escrow.isActive, "Escrow is no longer active");
         require(escrow.releaseTime < block.timestamp, "Escrow is not yet released");
         require(msg.sender == escrow.seller, "Only seller can withdraw");
 
-        escrow.isActive = false;
+        uint256 transferAmount = escrow.amount;
         escrow.amount = 0;
-        IERC20(escrow.token).safeTransfer(msg.sender, escrow.amount);
+        escrow.isActive = false;
+        IERC20(escrow.token).safeTransfer(msg.sender, transferAmount);
 
         emit Withdraw(escrowId);
     }
 
     function cancel(uint256 escrowId) external {
-        require(escrowId < escrowIdCounter, "Escrow does not exist");
+        require(!(escrowId > escrowIdCounter), "Escrow does not exist");
         Escrow memory escrow = escrows[escrowId];
         require(escrow.isActive, "Escrow is no longer active");
         require(msg.sender == escrow.buyer, "Only buyer can cancel");
