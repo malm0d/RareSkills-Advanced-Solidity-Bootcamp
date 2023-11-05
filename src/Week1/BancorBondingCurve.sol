@@ -46,6 +46,8 @@ contract BancorBondingCurve is IBancorBondingCurve, Power {
      *
      * Formula:
      * Return = _supply * ((1 + _depositAmount / _reserveBalance) ^ (_reserveRatio / MAX_RESERVE_RATIO) - 1)
+     * Or:
+     * PurchaseReturn = ContinuousTokenSupply * ((1 + ReserveTokensReceived / ReserveTokenBalance) ^ (ReserveRatio) - 1)
      *
      * @param _supply              continuous token total supply
      * @param _reserveBalance    total reserve token balance
@@ -95,6 +97,8 @@ contract BancorBondingCurve is IBancorBondingCurve, Power {
      *
      * Formula:
      * Return = _reserveBalance * (1 - (1 - _sellAmount / _supply) ^ (1 / (_reserveRatio / MAX_RESERVE_RATIO)))
+     * Or:
+     * SaleReturn = ReserveTokenBalance * (1 - (1 - ContinuousTokensReceived / ContinuousTokenSupply) ^ (1 / (ReserveRatio)))
      *
      * @param _supply              continuous token total supply
      * @param _reserveBalance    total reserve token balance
