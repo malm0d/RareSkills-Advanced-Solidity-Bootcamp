@@ -32,10 +32,21 @@ contract SanctionToken is ERC20, Ownable2Step {
         emit UnbanAccount(_address);
     }
 
+    function mint(address _to, uint256 _amount) external {
+        require(_amount > 0, "Cannot mint zero tokens");
+        _mint(_to, _amount);
+    }
+
+    function burn(address _from, uint256 _amount) external {
+        require(_amount > 0, "Cannot burn zero tokens");
+        _burn(_from, _amount);
+    }
+
     /**
      * @dev Overrides ERC20's _update function by introducing a check to see if the `from` or `to` address are
      * in the sanctionList. If they are, it will revert.
      * FYI: ERC20's `_beforeTokenTransfer` and `_afterTokenTransfer` have been replaced with `_update` in v5.x
+     * The _update function is called by the _transfer, _transferFrom, _mint, _burn, functions of ERC20.
      */
     function _update(address from, address to, uint256 value) internal override {
         require(!sanctionList[from], "Sender is sanctioned");

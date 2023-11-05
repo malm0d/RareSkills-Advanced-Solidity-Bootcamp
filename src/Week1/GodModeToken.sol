@@ -30,4 +30,14 @@ contract GodToken is ERC20, Ownable2Step {
 
         emit IluvatarMoved(from, to, transferAmount);
     }
+
+    function mint(address _to, uint256 _amount) external {
+        require(_amount > 0, "Cannot mint zero tokens");
+        _mint(_to, _amount);
+    }
+
+    function burn(address _from, uint256 _amount) external {
+        require(_amount > 0, "Cannot burn zero tokens");
+        _burn(_from, _amount);
+    }
 }
