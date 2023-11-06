@@ -7,6 +7,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
+//forge test --match-contract UntrustedEscrowTest -vvvv
 contract UntrustedEscrow is Ownable2Step {
     using SafeERC20 for IERC20;
     using Math for uint256;
@@ -71,7 +72,7 @@ contract UntrustedEscrow is Ownable2Step {
 
     function withdraw(uint256 escrowId) external {
         require(!(escrowId > escrowIdCounter), "Escrow does not exist");
-        Escrow memory escrow = escrows[escrowId];
+        Escrow storage escrow = escrows[escrowId];
         require(escrow.isActive, "Escrow is no longer active");
         require(escrow.releaseTime < block.timestamp, "Escrow is not yet released");
         require(msg.sender == escrow.seller, "Only seller can withdraw");
@@ -86,7 +87,7 @@ contract UntrustedEscrow is Ownable2Step {
 
     function cancel(uint256 escrowId) external {
         require(!(escrowId > escrowIdCounter), "Escrow does not exist");
-        Escrow memory escrow = escrows[escrowId];
+        Escrow storage escrow = escrows[escrowId];
         require(escrow.isActive, "Escrow is no longer active");
         require(msg.sender == escrow.buyer, "Only buyer can cancel");
         uint256 amount = escrow.amount;

@@ -15,7 +15,7 @@ contract SanctionToken is ERC20, Ownable2Step {
     event UnbanAccount(address indexed _address);
 
     constructor(uint256 _initialSupply) ERC20("SanctionToken", "ST") Ownable(msg.sender) {
-        _mint(msg.sender, _initialSupply * 10 ** decimals());
+        _mint(msg.sender, _initialSupply);
     }
 
     function banAddress(address _address) external onlyOwner {

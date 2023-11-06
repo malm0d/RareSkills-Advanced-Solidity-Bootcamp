@@ -40,8 +40,8 @@ contract TokenSaleAndBuyback is BancorBondingCurve, ERC20, IERC1363Receiver, Own
         reserveRatio = 5e5; //500_000 (50%)
         reserveToken = _reserveToken;
         interval = 1 days;
-        reserveBalance = 1000000e18;
-        _mint(msg.sender, 1000000e18);
+        reserveBalance = 100e18;
+        _mint(msg.sender, 100e18);
     }
 
     function updateInterval(uint256 _days) external onlyOwner {
@@ -51,6 +51,7 @@ contract TokenSaleAndBuyback is BancorBondingCurve, ERC20, IERC1363Receiver, Own
 
     function updateReserveRatio(uint256 _reserveRatio) external onlyOwner {
         require(_reserveRatio > 0, "Reserve ratio must be greater than zero");
+        require(!(_reserveRatio > 1000000), "Reserve ratio must be less than or equal to 1000000");
         reserveRatio = _reserveRatio;
     }
 
@@ -80,7 +81,7 @@ contract TokenSaleAndBuyback is BancorBondingCurve, ERC20, IERC1363Receiver, Own
      */
     function buy(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Cannot mint zero tokens");
-        IERC1363(reserveToken).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC1363(reserveToken).transferFromAndCall(msg.sender, address(this), _amount);
         buyTimestamps[msg.sender] = block.timestamp;
 
         emit Buy(msg.sender, _amount);
