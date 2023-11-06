@@ -40,8 +40,8 @@ contract TokenSaleAndBuyback is BancorBondingCurve, ERC20, IERC1363Receiver, Own
         reserveRatio = 5e5; //500_000 (50%)
         reserveToken = _reserveToken;
         interval = 1 days;
-        reserveBalance = 10_000_000_000e18;
-        _mint(msg.sender, 2_000_000_000e18);
+        reserveBalance = 1000000e18;
+        _mint(msg.sender, 1000000e18);
     }
 
     function updateInterval(uint256 _days) external onlyOwner {
