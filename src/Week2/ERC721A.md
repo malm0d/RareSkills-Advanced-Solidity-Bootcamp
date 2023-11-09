@@ -139,9 +139,11 @@ Note that the value for `_BITPOS_NUMBER_MINTED` is `64`. So in the line `_packed
 All of such operations in ERC721A will add up to help save gas.
 
 ### Consecutive Minting (ERC2309)
-ERC721A has a `_mintERC2309` function that allows multiple tokens to be minted to a single address (during contract creation). Essentially when a bulk of tokens are to be minted, this function can be used to emit a single `ConsecutiveTransfer` event instead of multiple `Transfer` events to reduce gas usage
+ERC721A has a `_mintERC2309` function that allows multiple tokens to be minted to a single address (during contract creation). Essentially when a bulk of tokens are to be minted, this function can be used to emit a single `ConsecutiveTransfer` event instead of multiple `Transfer` events to reduce gas usage.
 
 ## Where does ERC721A add costs?
+
+### The `_safeMint` function
 ERC721A's `_safeMint` function has added costs. In the function:
 ```
     /**
@@ -215,3 +217,103 @@ It does a check to see if the `to` address is an EOA or contract. And if it is a
 
 This article (https://www.rareskills.io/post/erc721#viewer-cucj0) explains the importance of checking for the function selector, but basically, if the call did not revert, its not enough to ensure that the receipient contract can handle the ERC721 (and ERC721A and all its siblings) tokens. If the recipient contract has a `fallback` function and the magic value is not checked for, then the transaction WILL NOT revert and the ERC721 token will be stuck (serious vulnerability we want to avoid).
 
+However, this is also done in the standard ERC721 implementation so its not unique to ERC721A.
+
+### Transfers
+Although ERC721A makes minting more efficient, it incurs more costs during the transfer of NFTs.
+In ERC721A's `transferFrom`:
+```
+    /**
+     * @dev Transfers `tokenId` from `from` to `to`.
+     *
+     * Requirements:
+     *
+     * - `from` cannot be the zero address.
+     * - `to` cannot be the zero address.
+     * - `tokenId` token must be owned by `from`.
+     * - If the caller is not `from`, it must be approved to move this token
+     * by either {approve} or {setApprovalForAll}.
+     *
+     * Emits a {Transfer} event.
+     */
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public payable virtual override {
+        uint256 prevOwnershipPacked = _packedOwnershipOf(tokenId);
+
+        // Mask `from` to the lower 160 bits, in case the upper bits somehow aren't clean.
+        from = address(uint160(uint256(uint160(from)) & _BITMASK_ADDRESS));
+
+        if (address(uint160(prevOwnershipPacked)) != from) _revert(TransferFromIncorrectOwner.selector);
+
+        (uint256 approvedAddressSlot, address approvedAddress) = _getApprovedSlotAndAddress(tokenId);
+
+        // The nested ifs save around 20+ gas over a compound boolean condition.
+        if (!_isSenderApprovedOrOwner(approvedAddress, from, _msgSenderERC721A()))
+            if (!isApprovedForAll(from, _msgSenderERC721A())) _revert(TransferCallerNotOwnerNorApproved.selector);
+
+        _beforeTokenTransfers(from, to, tokenId, 1);
+
+        // Clear approvals from the previous owner.
+        assembly {
+            if approvedAddress {
+                // This is equivalent to `delete _tokenApprovals[tokenId]`.
+                sstore(approvedAddressSlot, 0)
+            }
+        }
+
+        // Underflow of the sender's balance is impossible because we check for
+        // ownership above and the recipient's balance can't realistically overflow.
+        // Counter overflow is incredibly unrealistic as `tokenId` would have to be 2**256.
+        unchecked {
+            // We can directly increment and decrement the balances.
+            --_packedAddressData[from]; // Updates: `balance -= 1`.
+            ++_packedAddressData[to]; // Updates: `balance += 1`.
+
+            // Updates:
+            // - `address` to the next owner.
+            // - `startTimestamp` to the timestamp of transfering.
+            // - `burned` to `false`.
+            // - `nextInitialized` to `true`.
+            _packedOwnerships[tokenId] = _packOwnershipData(
+                to,
+                _BITMASK_NEXT_INITIALIZED | _nextExtraData(from, to, prevOwnershipPacked)
+            );
+
+            // If the next slot may not have been initialized (i.e. `nextInitialized == false`) .
+            if (prevOwnershipPacked & _BITMASK_NEXT_INITIALIZED == 0) {
+                uint256 nextTokenId = tokenId + 1;
+                // If the next slot's address is zero and not burned (i.e. packed value is zero).
+                if (_packedOwnerships[nextTokenId] == 0) {
+                    // If the next slot is within bounds.
+                    if (nextTokenId != _currentIndex) {
+                        // Initialize the next slot to maintain correctness for `ownerOf(tokenId + 1)`.
+                        _packedOwnerships[nextTokenId] = prevOwnershipPacked;
+                    }
+                }
+            }
+        }
+
+        // Mask `to` to the lower 160 bits, in case the upper bits somehow aren't clean.
+        uint256 toMasked = uint256(uint160(to)) & _BITMASK_ADDRESS;
+        assembly {
+            // Emit the `Transfer` event.
+            log4(
+                0, // Start of data (0, since no data).
+                0, // End of data (0, since no data).
+                _TRANSFER_EVENT_SIGNATURE, // Signature.
+                from, // `from`.
+                toMasked, // `to`.
+                tokenId // `tokenId`.
+            )
+        }
+        if (toMasked == 0) _revert(TransferToZeroAddress.selector);
+
+        _afterTokenTransfers(from, to, tokenId, 1);
+    }
+```
+Note that: `uint256 private constant _BITMASK_NEXT_INITIALIZED = 1 << 225;` is a binary number with a single '1' bit at the 225th position (counting from the right) and '0' bits in all other positions.
+
+In the `unchecked` block, when ownership of the transferred NFT is updated, the `nextInitialized` bits in the `_packedOwenshipData[tokenId]` is set to `1` (true). Then it checks if the next slot's ownership is not initialized (i.e., nextInitialized is `0` (false) in the previous ownership slot). If this is the case, it means that the contract is maintaining consecutive ownership slots efficiently. It checks if the next slot's address is `0` (indicating it hasn't been initialized) and is not burned (the packed value is 0). If these conditions are met, then it initializes the next slot with the same ownership data as the current token. This maintains consistency when querying the ownership of consecutive tokens, and for ensuring the correct ownership of subsequent tokens. However it incurs additional gas to the one (like the buyer) executing the transfer of the ERC721A token.
