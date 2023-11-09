@@ -219,7 +219,7 @@ This article (https://www.rareskills.io/post/erc721#viewer-cucj0) explains the i
 
 However, this is also done in the standard ERC721 implementation so its not unique to ERC721A.
 
-### Transfers
+### `transferFrom`
 Although ERC721A makes minting more efficient, it incurs more costs during the transfer of NFTs.
 In ERC721A's `transferFrom`:
 ```
