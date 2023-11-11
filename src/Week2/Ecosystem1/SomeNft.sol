@@ -5,17 +5,18 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 //A quick point: we could use ERC721Royalty which combines both 721 and 2981, but for practice, we will use the latter two.
 
-contract SomeNFT is ERC721, ERC2981, Ownable2Step {
+contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable {
     using BitMaps for BitMaps.BitMap;
 
     bytes32 public immutable merkleRoot;
     uint256 public constant MAX_SUPPLY = 1000;
-    uint256 public currentSupply; //also acts as the tokenId, so first tokenId is 0, last is 999
+    uint256 public currentSupply; //also acts as the tokenId counter, so first tokenId is 0, last is 999
     uint256 public constant MINT_PRICE = 1 ether;
     uint256 public constant DISCOUNT_FACTOR = 2; // For 50% discount
     uint96 public constant ROYALTY_FRACTION = 250; // 2.5% royalties
@@ -40,7 +41,7 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step {
      * @dev mint for users with the discount
      * @param _index Index of the user who has a discount for minting
      */
-    function mintWithDiscount(bytes32[] calldata _proof, uint256 _index) external payable {
+    function mintWithDiscount(bytes32[] calldata _proof, uint256 _index) external payable whenNotPaused {
         require(msg.value == MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
         require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
         require(!BitMaps.get(addressDiscountedMints, _index), "Already minted with discount");
@@ -60,7 +61,7 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step {
         }
     }
 
-    function mint() external payable {
+    function mint() external payable whenNotPaused {
         require(msg.value == MINT_PRICE, "Incorrect payment amount");
         require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
 
@@ -75,6 +76,18 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step {
         unchecked {
             currentSupply++;
         }
+    }
+
+    /**
+     * NFT contracts typically should be allowed to pause and unpause. Either as a safeguard,
+     * or to hold off the minting of tokens until a time determined by the owner.
+     */
+    function pause() external whenNotPaused onlyOwner {
+        _pause();
+    }
+
+    function unpause() external whenPaused onlyOwner {
+        _unpause();
     }
 
     /**
