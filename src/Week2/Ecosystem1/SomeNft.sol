@@ -24,7 +24,7 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable {
     BitMaps.BitMap private addressDiscountedMints;
 
     event Mint(address indexed to, uint256 indexed tokenId);
-    event WithdrawFunds(address indexed to, uint256 amount);
+    event WithdrawFunds(address indexed to);
 
     constructor(bytes32 _merkleRoot, address _royaltyReceiver) ERC721("SomeNFT", "SOME") Ownable(msg.sender) {
         require(_royaltyReceiver != address(0), "Cannot be the zero address");
@@ -35,6 +35,7 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable {
     function withdrawFunds() external onlyOwner {
         (bool success,) = payable(msg.sender).call{value: address(this).balance}("");
         require(success, "Withdrawal failed");
+        emit WithdrawFunds(msg.sender);
     }
 
     /**
