@@ -18,7 +18,6 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step {
     uint256 public currentSupply; //also acts as the tokenId, so first tokenId is 0, last is 999
     uint256 public constant MINT_PRICE = 1 ether;
     uint256 public constant DISCOUNT_FACTOR = 2; // For 50% discount
-    //address private royaltyReceiver; //we might not need this
     uint96 public constant ROYALTY_FRACTION = 250; // 2.5% royalties
 
     BitMaps.BitMap private addressDiscountedMints;
@@ -29,16 +28,8 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step {
     constructor(bytes32 _merkleRoot, address _royaltyReceiver) ERC721("SomeNFT", "SOME") Ownable(msg.sender) {
         require(_royaltyReceiver != address(0), "Cannot be the zero address");
         merkleRoot = _merkleRoot;
-        //royaltyReceiver = _royaltyReceiver;
         _setDefaultRoyalty(_royaltyReceiver, ROYALTY_FRACTION);
     }
-
-    //We might not need this.
-    // function updateRoyaltyReceiver(address _royaltyReceiver) external onlyOwner {
-    //     require(_royaltyReceiver != address(0), "Cannot be the zero address");
-    //     royaltyReceiver = _royaltyReceiver;
-    //     _setDefaultRoyalty(_royaltyReceiver, ROYALTY_FRACTION);
-    // }
 
     function withdrawFunds() external onlyOwner {
         (bool success,) = payable(msg.sender).call{value: address(this).balance}("");
