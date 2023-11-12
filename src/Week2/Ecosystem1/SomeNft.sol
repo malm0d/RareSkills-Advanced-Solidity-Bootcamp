@@ -8,18 +8,19 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 //A quick point: we could use ERC721Royalty which combines both 721 and 2981, but for practice, we will use the latter two.
 
-contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable {
+contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable, ReentrancyGuard {
     using BitMaps for BitMaps.BitMap;
 
     bytes32 public immutable merkleRoot;
     uint256 public constant MAX_SUPPLY = 1000;
     uint256 public currentSupply; //also acts as the tokenId counter, so first tokenId is 0, last is 999
     uint256 public constant MINT_PRICE = 1 ether;
-    uint256 public constant DISCOUNT_FACTOR = 2; // For 50% discount
     uint96 public constant ROYALTY_FRACTION = 250; // 2.5% royalties
+    uint8 public constant DISCOUNT_FACTOR = 2; // For 50% discount
 
     BitMaps.BitMap private addressDiscountedMints;
 
@@ -42,7 +43,7 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable {
      * @dev mint for users with the discount
      * @param _index Index of the user who has a discount for minting
      */
-    function mintWithDiscount(bytes32[] calldata _proof, uint256 _index) external payable whenNotPaused {
+    function mintWithDiscount(bytes32[] calldata _proof, uint256 _index) external payable nonReentrant whenNotPaused {
         require(msg.value == MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
         require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
         require(!BitMaps.get(addressDiscountedMints, _index), "Already minted with discount");
@@ -62,7 +63,7 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable {
         }
     }
 
-    function mint() external payable whenNotPaused {
+    function mint() external payable nonReentrant whenNotPaused {
         require(msg.value == MINT_PRICE, "Incorrect payment amount");
         require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
 
