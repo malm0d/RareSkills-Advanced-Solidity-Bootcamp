@@ -63,6 +63,8 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable, ReentrancyGuard {
         }
     }
 
+    //besides using the pause mechanism, how else can we prevent DOS attacks?
+    //Would a gas limit work? What if attacker sents a ton of gas?
     function mint() external payable nonReentrant whenNotPaused {
         require(msg.value == MINT_PRICE, "Incorrect payment amount");
         require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
@@ -109,5 +111,21 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable, ReentrancyGuard {
     function _verifyMerkleProof(bytes32[] calldata _proof, address _address, uint256 _index) private view {
         bytes32 leaf = keccak256(abi.encodePacked(_address, _index));
         require(MerkleProof.verify(_proof, merkleRoot, leaf), "Invalid merkle proof");
+    }
+
+    /**
+     * @dev If we want to restrict the mint and mintWithDiscount to only be called by EOAs, we can use this
+     * to check whether the caller is a contract or not. This is in the event we want to restrict the minting
+     * to only be done by EOAs. (EOAs have no code, so this function will return false for them).
+     *
+     * BUT, this check can actually be bypassed by the calling contract if the call is made in its constructor, as it
+     * will return 0 in this case. So this may not be entirely useful. Included just for educational purposes.
+     */
+    function isContract(address _address) private view returns (bool) {
+        uint32 size;
+        assembly {
+            size := extcodesize(_address)
+        }
+        return (size > 0);
     }
 }
