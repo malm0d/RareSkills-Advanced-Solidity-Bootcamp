@@ -51,10 +51,10 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
     }
 
     function onERC721Received(
-        address operator,
+        address, /*operator*/
         address from,
         uint256 tokenId,
-        bytes calldata data
+        bytes calldata /*data*/
     )
         external
         returns (bytes4)
