@@ -49,6 +49,7 @@ contract IsPrimeOnSteroids {
         return result;
     }
 
+    // Its easier and more practical to do this in Solidity...
     function _isPrimeNumber(uint256 n) public pure returns (bool) {
         if (n < 2) {
             return false;
