@@ -1,5 +1,6 @@
-import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
-import { fs } from "fs";
+//import { StandardMerkleTree } from "@openzeppelin/merkle-tree";
+const StandardMerkleTree = require("@openzeppelin/merkle-tree").StandardMerkleTree;
+const fs = require("fs");
 
 //address, index
 const data = [
@@ -18,4 +19,6 @@ const merkleTree = StandardMerkleTree.of(data, ["address", "uint256"]);
 
 console.log("Merkle root: ", merkleTree.root);
 
-fs.writeFileSync("merkleTree.json", JSON.stringify(merkleTree));
+fs.writeFileSync("merkleTree.json", JSON.stringify(merkleTree.dump(), null, 2));
+
+//root: 0xa297e088bf87eea455a2cbb55853136013d1f0c222822827516f97639984ec19
