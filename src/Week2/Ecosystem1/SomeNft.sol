@@ -109,7 +109,8 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, Pausable, ReentrancyGuard {
      * @param _index Index of the user
      */
     function _verifyMerkleProof(bytes32[] calldata _proof, address _address, uint256 _index) private view {
-        bytes32 leaf = keccak256(abi.encodePacked(_address, _index));
+        // bytes32 leaf = keccak256(abi.encodePacked(_address, _index));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(_address, _index))));
         require(MerkleProof.verify(_proof, merkleRoot, leaf), "Invalid merkle proof");
     }
 
