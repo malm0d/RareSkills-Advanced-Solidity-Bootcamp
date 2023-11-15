@@ -66,7 +66,9 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
          * in the execution of the `safeTransferFrom` function (fyi: also during _safeMint).
          *
          * IMPORTANT: Check that the msg.sender is the ERC721 contract, and check that the tokenId is valid.
-         * Accept the token if both conditions are satisfied, otherwise we must revert.
+         * Accept the token only if both conditions are satisfied, otherwise we must revert.
+         * These two checks are critical because a malicious NFT contract could have the same token ids.
+         * See the `testTransferNFTFail` test in `Staking.t.sol`.
          */
         require(msg.sender == address(someNFTContract), "Caller is not the ERC721 contract");
         require(!(tokenId > someNFTContract.currentSupply()), "Token ID is invalid");
@@ -90,6 +92,7 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
      * @dev `safeTransferFrom` handles the ownership check and clearing the approval when
      * the transfer was successful (see `transferFrom` and `_update`). We do not need to do that here.
      * The checking of the trusted ERC721 contract and a valid token ID is done in `onERC721Received`.
+     * This function ASSUMES that approval has already been granted, so it will revert if it has not.
      */
     function stakeNFT(uint256 _tokenId) external nonReentrant whenNotPaused {
         someNFTContract.safeTransferFrom(msg.sender, address(this), _tokenId);
@@ -122,7 +125,7 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
     function claimRewards(uint256 _tokenId) external nonReentrant whenNotPaused {
         require(getClaimTime(_tokenId) > 0, "This token ID is not staked");
         require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can claim rewards for this token ID");
-        require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim every 24 hours");
+        require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
 
         rewardTokenContract.mintRewards(msg.sender, 10 * (10 ** tokenDecimals));
 

@@ -11,9 +11,7 @@ contract RewardToken is ERC20, Ownable2Step {
 
     address public stakingContract;
 
-    constructor(address _stakingContract) ERC20("RewardToken", "RT") Ownable(msg.sender) {
-        stakingContract = _stakingContract;
-    }
+    constructor() ERC20("RewardToken", "RT") Ownable(msg.sender) {}
 
     function updateStakingContract(address _stakingContractAddress) external onlyOwner {
         require(_stakingContractAddress != address(0), "Cannot be the zero address");
