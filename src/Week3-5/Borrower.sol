@@ -6,6 +6,7 @@ import {IERC3156FlashLender} from "@openzeppelin/contracts/interfaces/IERC3156Fl
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Borrower is IERC3156FlashBorrower, Ownable2Step, ReentrancyGuard {
     IERC3156FlashLender public lender;
@@ -34,6 +35,10 @@ contract Borrower is IERC3156FlashBorrower, Ownable2Step, ReentrancyGuard {
      * @param fee The additional amount of tokens to repay.
      * @param data Arbitrary data structure, intended to contain user-defined parameters.
      * @return The keccak256 hash of "ERC3156FlashBorrower.onFlashLoan"
+     *
+     * Only a trusted address: `trustedInitiator` can initiate a flash loan with this contract.
+     * Only the trusted flash loan lender: `lender` can call this function.
+     * Return the magic value to signal to the lender intention to handle flash loan.
      */
     function onFlashLoan(
         address initiator,
@@ -47,6 +52,11 @@ contract Borrower is IERC3156FlashBorrower, Ownable2Step, ReentrancyGuard {
     {
         require(msg.sender == address(lender), "Borrower: Lender is not trusted address");
         require(initiator == trustedInitiator, "Borrower: Initiator is not trusted address");
+
+        //do some
+
+        //Allow lender to transfer tokens from this contract
+        IERC20(token).approve(address(lender), amount + fee);
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
     }
