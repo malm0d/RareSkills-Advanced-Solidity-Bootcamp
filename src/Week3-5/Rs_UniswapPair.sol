@@ -61,11 +61,9 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         token1 = _token1;
     }
 
-    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external nonReentrant {}
-
-    function mint(address to) external nonReentrant returns (uint256) {}
-
-    function burn(address to) external nonReentrant returns (uint256, uint256) {}
+    //****************************************************************************************************
+    //**************************************** EXTERNAL FUNCTIONS ****************************************
+    //****************************************************************************************************
 
     // force balances to match reserves
     function skim(address to) external nonReentrant {
@@ -79,6 +77,15 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     function sync() external nonReentrant {
         _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
     }
+
+    // this low-level function should be called from a contract which performs important safety checks
+    function mint(address to) external nonReentrant returns (uint256) {}
+
+    // this low-level function should be called from a contract which performs important safety checks
+    function burn(address to) external nonReentrant returns (uint256, uint256) {}
+
+    // this low-level function should be called from a contract which performs important safety checks
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external nonReentrant {}
 
     /**
      * @dev Initiate a flash loan
@@ -126,12 +133,20 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         return _flashFee(amount);
     }
 
+    //****************************************************************************************************
+    //**************************************** PUBLIC FUNCTIONS ******************************************
+    //****************************************************************************************************
+
     function getReserves() public view returns (uint112, uint112, uint32) {
         _reserve0 = reserve0;
         _reserve1 = reserve1;
         _blockTimestampLast = blockTimestampLast;
         return (_reserve0, _reserve1, _blockTimestampLast);
     }
+
+    //****************************************************************************************************
+    //*********************************** INTERNAL & PRIVATE FUNCTIONS ***********************************
+    //****************************************************************************************************
 
     /**
      * Note: TWAP oracle usage. Invoked on `mint`, `burn`, `swap`, `sync`.
@@ -154,15 +169,45 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         emit Sync(reserve0, reserve1);
     }
 
+    /**
+     * If fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k).
+     *
+     * If `rootK` is gt `rootKLast`, this implies liquidity pool has grown and a fee can be minted to `feeTo`.
+     * The fee is calculatated as a fraction of the increase in liquidity, specifically, it is proportional to the
+     * increase in sqrt(k), adjusted by the `totalSupply()` of the pool and a denominator which is the sum of the
+     * previous sqrt(k) and the current sqrt(k).
+     *
+     * The use of `rootK` and `rootKLast` in the denominator ensures that the fee is proportional to the increase
+     * in sqrt(k) per liquidity token, giving the fee a logical fraction of the total pool (both the current state
+     * and the historical state of the pool).
+     *
+     * By making the fee dependent on the growth of the pool over time, this formula reduces the potential for
+     * manipulation by making it less profitable to artificially inflate the pool size temporarily just before the
+     * fee calculation.
+     *
+     * `liquidity` is the liquidity fee to `feeTo`.
+     */
     function _mintFee(uint112 _reserve0, uint112 _reserve1) private returns (bool) {
         address feeTo = IUniswapFactory(factory).feeTo();
         bool feeOn = feeTo != address(0);
         uint256 _kLast = kLast; // gas savings
         if (feeOn) {
             if (_kLast != 0) {
-                uint256 rootK = FixedPointMathLib.sqrt(uint256(_reserve0) * _reserve1);
-                uint256 rootKLast = FixedPointMathLib.sqrt(_kLast);
+                uint256 rootK = FixedPointMathLib.sqrt(uint256(_reserve0) * _reserve1); //current K
+                uint256 rootKLast = FixedPointMathLib.sqrt(_kLast); //previous K
+                if (rootK > rootKLast) {
+                    uint256 numerator = totalSupply() * (rootK - rootKLast);
+                    uint256 denominator = (rootK * PROTOCOL_FEE) + rootKLast;
+                    uint256 liquidity = numerator / denominator;
+                    if (liquidity > 0) {
+                        _mint(feeTo, liquidity);
+                        return true;
+                    }
+                }
             }
+        } else if (_kLast != 0) {
+            // Resets `kLast` to 0 if fee is off and `_kLast` is not 0.
+            kLast = 0;
         }
     }
 
