@@ -34,7 +34,7 @@ When calculating a Time Weighted Average Price, we need to be able to query for 
 
 So `price0CumulativeLast` and `price1CumulativeLast` essentially only keep increasing based on the function, and they accumulate prices constantly whenever there is an update.
 
-## 2. Why are `price0CumulativeLast` and `price1CumulativeLast` sroted separately? Why not just calculate `price1CumulativeLast = 1/price0CumulativeLast`?
+## 2. Why are `price0CumulativeLast` and `price1CumulativeLast` stored separately? Why not just calculate `price1CumulativeLast = 1/price0CumulativeLast`?
 As per the article, in calculating the prices of each token in a pair, the price of one token cannot simply be the inverse of the other token when we are accumulating pricing. If you were to calculate `price1CumulativeLast` as the inverse of `price0CumulativeLast`, it would introduce rounding errors and potential inaccuracies. This is especially true in blockchain applications where floating-point arithmetic is not as precise, and fixed-point arithmetic is the norm.
 
 Storing `price0CumulativeLast and `price1CumulativeLast` separately provides a more accurate and reliable measurement for each token’s price relative to the other. Also, since liquidity pools on Uniswap can expereince shifts in liquidity and price that are not symmetric, the individual tracking of each token's price is necessary to accurately reflect the state of the pool.
