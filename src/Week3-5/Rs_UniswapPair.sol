@@ -115,30 +115,17 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     {
         require(token == token0 || token == token1, "UniswapPair: token must be either token0 or token1");
         require(amount <= maxFlashLoan(token), "UniswapPair: amount exceeds maxFlashLoan");
-        uint256 fee = _flashFee(token, amount);
+        uint256 fee = _flashFee(amount);
         SafeTransferLib.safeTransfer(token, address(receiver), amount); //loan out
         //receiver callback
         require(
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == CALLBACK_SUCCESS,
             "UniswapPair: flash loan callback failed"
         );
-        SafeTransferLib.safeTransferFrom(token, address(this), amount + fee); //repays loan
+        SafeTransferLib.safeTransferFrom(token, address(receiver), address(this), amount + fee); //repays loan
 
         emit FlashLoan(address(receiver), token, amount, fee, data);
         return true;
-    }
-
-    /**
-     * Note:
-     * For the given token, the maximum that can be flash loaned out.
-     * Returns 0 if reserve amount is not sufficient.
-     */
-    function maxFlashLoan(address tokenToLoan) external view returns (uint256) {
-        uint256 reserveAmount = (tokenToLoan == token0) ? reserve0 : reserve1;
-        if (reserveAmount > MINIMUM_LIQUIDITY) {
-            return reserveAmount - MINIMUM_LIQUIDITY;
-        }
-        return 0;
     }
 
     /**
@@ -161,6 +148,19 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         return (_reserve0, _reserve1, _blockTimestampLast);
     }
 
+    /**
+     * Note:
+     * For the given token, the maximum that can be flash loaned out.
+     * Returns 0 if reserve amount is not sufficient.
+     */
+    function maxFlashLoan(address tokenToLoan) public view returns (uint256) {
+        uint256 reserveAmount = (tokenToLoan == token0) ? reserve0 : reserve1;
+        if (reserveAmount > MINIMUM_LIQUIDITY) {
+            return reserveAmount - MINIMUM_LIQUIDITY;
+        }
+        return 0;
+    }
+
     //****************************************************************************************************
     //*********************************** INTERNAL & PRIVATE FUNCTIONS ***********************************
     //****************************************************************************************************
@@ -177,7 +177,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
             if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
                 // * never overflows, and + overflow is desired
                 price0CumulativeLast += uint256(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
-                price1CumulativeLast += uint256(UQ112x112.encode(_reserve0).uqdic(_reserve1)) * timeElapsed;
+                price1CumulativeLast += uint256(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) * timeElapsed;
             }
         }
         reserve0 = uint112(balance0);
