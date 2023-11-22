@@ -1,14 +1,15 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
 
-import {FixedPointMathLib} from "@solady/src/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "@solady/src/utils/SafeTransferLib.sol";
 import {IERC3156FlashLender} from "@openzeppelin/contracts/interfaces/IERC3156FlashLender.sol";
+import {IERC3156FlashBorrower} from "@openzeppelin/contracts/interfaces/IERC3156FlashBorrower.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IUniswapFactory} from "./IUniswapFactory.sol";
 import {UniToken} from "./Rs_UniToken.sol";
 import {UQ112x112} from "./UQ112x112.sol";
+import {FixedPointMathLib} from "@solady/src/utils/FixedPointMathLib.sol";
+import {SafeTransferLib} from "@solady/src/utils/SafeTransferLib.sol";
 
 /**
  * Note: Solady's sqrt function uses the Babylonian method for calculating sqrt
@@ -93,6 +94,13 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
      * @param token The loan currency of the flash loan.
      * @param amount The amount of tokens lent in flash loan.
      * @param data Arbitrary data structure, data to send to receiver.
+     *
+     * Note:
+     * Someone might call `flashLoan` with unsupported token, so checks for token.
+     * Checks that the amount to loan out does not exceed `maxFlashLoan`.
+     * The borrower borrows and must pay back the loan plus the fee atomically. We will be the ones to
+     * transfer to them and transfer back from them. Cannot assume that they will return the loan.
+     * Important to use `safeTransferFrom` to get loaned tokens back.
      */
     function flashLoan(
         IERC3156FlashBorrower receiver,
@@ -103,26 +111,35 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         external
         override
         nonReentrant
-        whenNotPaused
         returns (bool)
     {
         require(token == token0 || token == token1, "UniswapPair: token must be either token0 or token1");
-        uint256 fee = 0; //To do: calculate the fee
-
-        //do some
-
+        require(amount <= maxFlashLoan(token), "UniswapPair: amount exceeds maxFlashLoan");
+        uint256 fee = _flashFee(token, amount);
+        SafeTransferLib.safeTransfer(token, address(receiver), amount); //loan out
+        //receiver callback
         require(
             receiver.onFlashLoan(msg.sender, token, amount, fee, data) == CALLBACK_SUCCESS,
             "UniswapPair: flash loan callback failed"
         );
-        SafeTransferLib.safeTransferFrom(address(receiver), address(this), amount + fee);
+        SafeTransferLib.safeTransferFrom(token, address(this), amount + fee); //repays loan
 
         emit FlashLoan(address(receiver), token, amount, fee, data);
         return true;
     }
 
-    //For the given token, the maximum that can be flash loaned out
-    function maxFlashLoan(address tokenToLoan) external view returns (uint256) {}
+    /**
+     * Note:
+     * For the given token, the maximum that can be flash loaned out.
+     * Returns 0 if reserve amount is not sufficient.
+     */
+    function maxFlashLoan(address tokenToLoan) external view returns (uint256) {
+        uint256 reserveAmount = (tokenToLoan == token0) ? reserve0 : reserve1;
+        if (reserveAmount > MINIMUM_LIQUIDITY) {
+            return reserveAmount - MINIMUM_LIQUIDITY;
+        }
+        return 0;
+    }
 
     /**
      * For the given token, how much interest is charged on the flash loan.
@@ -138,9 +155,9 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     //****************************************************************************************************
 
     function getReserves() public view returns (uint112, uint112, uint32) {
-        _reserve0 = reserve0;
-        _reserve1 = reserve1;
-        _blockTimestampLast = blockTimestampLast;
+        uint112 _reserve0 = reserve0;
+        uint112 _reserve1 = reserve1;
+        uint32 _blockTimestampLast = blockTimestampLast;
         return (_reserve0, _reserve1, _blockTimestampLast);
     }
 
@@ -170,6 +187,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     }
 
     /**
+     * Note:
      * If fee is on, mint liquidity equivalent to 1/6th of the growth in sqrt(k).
      *
      * If `rootK` is gt `rootKLast`, this implies liquidity pool has grown and a fee can be minted to `feeTo`.
