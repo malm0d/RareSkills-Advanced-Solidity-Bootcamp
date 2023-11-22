@@ -85,8 +85,49 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     // this low-level function should be called from a contract which performs important safety checks
     function burn(address to) external nonReentrant returns (uint256, uint256) {}
 
-    // this low-level function should be called from a contract which performs important safety checks
-    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata data) external nonReentrant {}
+    /**
+     * @param amount0Out Amount of token0 to receive from the swap
+     * @param amount1Out Amount of token1 to receive from the swap
+     * @param to Recipient of the swap
+     *
+     * Note: this low-level function should be called from a contract which performs important safety checks
+     * Recall that `reserve` is previous balance, and `balance` is current balance.
+     * The user/calling contract has to supply a certain amount of one of the tokens to the pair contract (pool),
+     * before calling the `swap` function.
+     *
+     * In balancing X * Y = K, K either remains or increases. If it increases, it increases by an amount that
+     * enforces the 0.3% fee. The fee in only applied to incoming tokens from the swap.
+     * K new must be >= K prev.
+     */
+    function swap(uint256 amount0Out, uint256 amount1Out, address to) external nonReentrant {
+        require(amount0Out > 0 || amount1Out > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
+        require(amount0Out < _reserve0 && amount1Out < _reserve1, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+
+        address _token0 = token0;
+        address _token1 = token1;
+        require(to != _token0 && to != _token1, "UniswapPair: INVALID_TO");
+        // Optimistically transfer tokens - assumes incoming tokens are transferred to pool
+        if (amount0Out > 0) SafeTransferLib.safeTransfer(_token0, to, amount0Out);
+        if (amount1Out > 0) SafeTransferLib.safeTransfer(_token1, to, amount1Out);
+        // Get current balance of token0 & token1 held by this contract
+        uint256 balance0 = IERC20(_token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(_token1).balanceOf(address(this));
+        // Calculate amount of token0 & token1 sent to the pool by the caller.
+        // Either there us a net increase or a net decrease (no change) in the amount of a particular token.
+        // If net decrease, then `amountIn` will be 0.
+        uint256 amount0In = (balance0 > _reserve0 - amount0Out) ? balance0 - (_reserve0 - amount0Out) : 0;
+        uint256 amount1In = (balance1 > _reserve1 - amount1Out) ? balance1 - (_reserve1 - amount1Out) : 0;
+        require(amount0In > 0 || amount1In > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+        // Adjust balances by multiplying `amountIn` by the swap fee and subtracting from the balance.
+        uint256 balance0Adjusted = (balance0 * BASE) - (amount0In * SWAP_FEES);
+        uint256 balance1Adjusted = (balance1 * BASE) - (amount1In * SWAP_FEES);
+        // Ensure that new balances must increase by 0.3% of the amount in. Each term is scaled by 1000.
+        require((balance0Adjusted * balance1Adjusted) >= (_reserve0 * _reserve1 * (BASE ** 2)), "UniswapPair: K");
+        // Update reserves with current balances
+        _update(balance0, balance1, _reserve0, _reserve1);
+        emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
+    }
 
     /**
      * @dev Initiate a flash loan
@@ -169,6 +210,8 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
      * Note: TWAP oracle usage. Invoked on `mint`, `burn`, `swap`, `sync`.
      * Allow overflow, by leveraging on modular arithmetic props of uint32: it wraps around after exceeding
      * max value of uint32 (2^32 - 1). Enables `timeElapsed` to be calculated correctly.
+     *
+     * price(foo) = reserve(bar) / reserve(foo)
      */
     function _update(uint256 balance0, uint256 balance1, uint112 _reserve0, uint112 _reserve1) private {
         uint32 blockTimestamp = uint32(block.timestamp);
