@@ -79,11 +79,84 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
     }
 
-    // this low-level function should be called from a contract which performs important safety checks
-    function mint(address to) external nonReentrant returns (uint256) {}
+    /**
+     * @param to Recipient of the minted tokens
+     * Note: this low-level function should be called from a contract which performs important safety checks
+     * Total supply of LP could change at the time, so slippage protection must be implemented.
+     *
+     * If first liquidity provider, LP tokens minted is the geometric mean of amount0 and amount1, minus MINIMUM_LIQUIDITY.
+     * Subtraction is done to prevent inflation attacks: burning shares so no one owns entire supply of LP tokens and can
+     * manipulate prices. The burned shares from the first liquidity provider are removed from circulation. By doing so, it
+     * prevents a scenario where totalSupply of LP tokens can be disproportionately high relative to actual balance in pool.
+     * Since no one owns entire supply of LP tokens, no one can add/remove liquidity and manipulate prices at will as the
+     * `MINIMUM_LIQUIDITY` ensures base level of liquidity in the pool.
+     *
+     * Subsequent liquidity providers are incentivized to add tokens in a ratio close to the current ratio of the pool.
+     * The amount of LP tokens minted to these providers is the lower of the two ratios.
+     */
+    function mint(address to) external nonReentrant returns (uint256) {
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+        //Get amount of tokens sent as part of tx
+        uint256 amount0 = balance0 - _reserve0;
+        uint256 amount1 = balance1 - _reserve1;
+        uint256 liquidity;
+        bool feeOn = _mintFee(_reserve0, _reserve1);
+        uint256 _totalSupply = totalSupply(); //must be defined here since totalSupply can update in _mintFee
+        if (_totalSupply == 0) {
+            liquidity = FixedPointMathLib.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
+            _mint(address(0), MINIMUM_LIQUIDITY); //permanently lock the first MINIMUM_LIQUIDITY tokens
+        } else {
+            liquidity =
+                FixedPointMathLib.min((amount0 * _totalSupply) / _reserve0, (amount1 * _totalSupply) / _reserve1);
+        }
+        require(liquidity > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY_MINTED");
+        _mint(to, liquidity);
 
-    // this low-level function should be called from a contract which performs important safety checks
-    function burn(address to) external nonReentrant returns (uint256, uint256) {}
+        _update(balance0, balance1, _reserve0, _reserve1);
+        if (feeOn) {
+            kLast = uint256(reserve0) * reserve1; //reserve0 and reserve1 are updated in _update
+        }
+
+        emit Mint(msg.sender, amount0, amount1);
+        return liquidity;
+    }
+
+    /**
+     * Note: this low-level function should be called from a contract which performs important safety checks
+     * Amounts of token0 and token1 that the liquidity provider receives depends on the ratio of the LP tokens they
+     * burn to the total supply of LP topkens. But totalSupply can change before burn transaction finalized, so
+     * slippage protection must be implemented.
+     */
+    function burn(address to) external nonReentrant returns (uint256, uint256) {
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
+        address _token0 = token0;
+        address _token1 = token1;
+        uint256 balance0 = IERC20(_token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(_token1).balanceOf(address(this));
+        uint256 liquidity = balanceOf(address(this));
+
+        bool feeOn = _mintFee(_reserve0, _reserve1);
+        uint256 _totalSupply = totalSupply(); //must be defined here since totalSupply can update in _mintFee
+        uint256 amount0 = (liquidity * balance0) / _totalSupply; //using balances ensures pro-rata distribution
+        uint256 amount1 = (liquidity * balance1) / _totalSupply; //using balances ensures pro-rata distribution
+        require(amount0 > 0 && amount1 > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY_BURNED");
+
+        _burn(address(this), liquidity);
+        SafeTransferLib.safeTransfer(_token0, to, amount0);
+        SafeTransferLib.safeTransfer(_token1, to, amount1);
+
+        balance0 = IERC20(_token0).balanceOf(address(this));
+        balance1 = IERC20(_token1).balanceOf(address(this));
+        _update(balance0, balance1, _reserve0, _reserve1);
+        if (feeOn) {
+            kLast = uint256(reserve0) * reserve1; //reserve0 and reserve1 are updated in _update
+        }
+
+        emit Burn(msg.sender, amount0, amount1, to);
+        return (amount0, amount1);
+    }
 
     /**
      * @param amount0Out Amount of token0 to receive from the swap
@@ -123,7 +196,9 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         uint256 balance0Adjusted = (balance0 * BASE) - (amount0In * SWAP_FEES);
         uint256 balance1Adjusted = (balance1 * BASE) - (amount1In * SWAP_FEES);
         // Ensure that new balances must increase by 0.3% of the amount in. Each term is scaled by 1000.
-        require((balance0Adjusted * balance1Adjusted) >= (_reserve0 * _reserve1 * (BASE ** 2)), "UniswapPair: K");
+        require(
+            (balance0Adjusted * balance1Adjusted) >= (uint256(_reserve0) * _reserve1 * (BASE ** 2)), "UniswapPair: K"
+        );
         // Update reserves with current balances
         _update(balance0, balance1, _reserve0, _reserve1);
         emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
@@ -207,7 +282,8 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     //****************************************************************************************************
 
     /**
-     * Note: TWAP oracle usage. Invoked on `mint`, `burn`, `swap`, `sync`.
+     * Note: Updates the reserves.
+     * TWAP oracle usage. Invoked on `mint`, `burn`, `swap`, `sync`.
      * Allow overflow, by leveraging on modular arithmetic props of uint32: it wraps around after exceeding
      * max value of uint32 (2^32 - 1). Enables `timeElapsed` to be calculated correctly.
      *
@@ -226,6 +302,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         reserve0 = uint112(balance0);
         reserve1 = uint112(balance1);
         blockTimestampLast = blockTimestamp;
+
         emit Sync(reserve0, reserve1);
     }
 
@@ -270,6 +347,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
             // Resets `kLast` to 0 if fee is off and `_kLast` is not 0.
             kLast = 0;
         }
+        return feeOn;
     }
 
     function _flashFee(uint256 amount) private pure returns (uint256) {
