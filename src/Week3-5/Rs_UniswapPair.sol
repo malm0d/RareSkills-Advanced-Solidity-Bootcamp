@@ -80,12 +80,26 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     }
 
     /**
-     * Note: this low-level function should be called from a contract which performs important safety checks
+     * @param to Liquidity provider who is burning LP tokens to withdraw tokens
+     * @param amount0Min Minimum amount of token0 to receive
+     * @param amount1Min Minimum amount of token1 to receive
+     * @return amount0 Amount of token0 returned from burning LP tokens
+     * @return amount1 Amount of token1 returned from burning LP tokens
+     *
+     * Note: This implementation assumes users will interact directly with contract and not via router.
      * Amounts of token0 and token1 that the liquidity provider receives depends on the ratio of the LP tokens they
      * burn to the total supply of LP topkens. But totalSupply can change before burn transaction finalized, so
      * slippage protection must be implemented.
      */
-    function burn(address to) external nonReentrant returns (uint256, uint256) {
+    function burn(
+        address to,
+        uint256 amount0Min,
+        uint256 amount1Min
+    )
+        external
+        nonReentrant
+        returns (uint256, uint256)
+    {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
         address _token0 = token0;
         address _token1 = token1;
@@ -98,6 +112,17 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         uint256 amount0 = (liquidity * balance0) / _totalSupply; //using balances ensures pro-rata distribution
         uint256 amount1 = (liquidity * balance1) / _totalSupply; //using balances ensures pro-rata distribution
         require(amount0 > 0 && amount1 > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY_BURNED");
+
+        //Check for slippage. Calculated amounts should be >= minimum amounts specified for slippage tolerance.
+        //This would revert if the total supply changes unfavourably where the amount of tokens received
+        //from burning LP tokens ends up being less than the minimum amounts specified.
+        require(amount0 >= amount0Min, "UniswapPair: SLIPPAGE_AMOUNT0");
+        require(amount1 >= amount1Min, "UniswapPair: SLIPPAGE_AMOUNT1");
+
+        //Ensure that burning LP tokens does not result in `totalSupply` going to zero, to prevent potential
+        //first deposit attack, where an attacker can manipulate pool by reducing `totalSupply` to zero, effectively
+        //resetting the pool and becoming the first to deposit and set an unreasonable initial price ratio.
+        require(_totalSupply - liquidity > 0, "UniswapPair: ZERO_TOTAL_SUPPLY");
 
         _burn(address(this), liquidity);
         SafeTransferLib.safeTransfer(_token0, to, amount0);
@@ -141,7 +166,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         uint256 _totalSupply = totalSupply(); //must be defined here since totalSupply can update in _mintFee
         if (_totalSupply == 0) {
             liquidity = FixedPointMathLib.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
-            _mint(address(0), MINIMUM_LIQUIDITY); //permanently lock the first MINIMUM_LIQUIDITY tokens
+            _mint(address(0), MINIMUM_LIQUIDITY); //permanently lock the first MINIMUM_LIQUIDITY LP tokens
         } else {
             liquidity =
                 FixedPointMathLib.min((amount0 * _totalSupply) / _reserve0, (amount1 * _totalSupply) / _reserve1);
