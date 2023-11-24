@@ -80,6 +80,41 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     }
 
     /**
+     * Note: this low-level function should be called from a contract which performs important safety checks
+     * Amounts of token0 and token1 that the liquidity provider receives depends on the ratio of the LP tokens they
+     * burn to the total supply of LP topkens. But totalSupply can change before burn transaction finalized, so
+     * slippage protection must be implemented.
+     */
+    function burn(address to) external nonReentrant returns (uint256, uint256) {
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
+        address _token0 = token0;
+        address _token1 = token1;
+        uint256 balance0 = IERC20(_token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(_token1).balanceOf(address(this));
+        uint256 liquidity = balanceOf(address(this));
+
+        bool feeOn = _mintFee(_reserve0, _reserve1);
+        uint256 _totalSupply = totalSupply(); //must be defined here since totalSupply can update in _mintFee
+        uint256 amount0 = (liquidity * balance0) / _totalSupply; //using balances ensures pro-rata distribution
+        uint256 amount1 = (liquidity * balance1) / _totalSupply; //using balances ensures pro-rata distribution
+        require(amount0 > 0 && amount1 > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY_BURNED");
+
+        _burn(address(this), liquidity);
+        SafeTransferLib.safeTransfer(_token0, to, amount0);
+        SafeTransferLib.safeTransfer(_token1, to, amount1);
+
+        balance0 = IERC20(_token0).balanceOf(address(this));
+        balance1 = IERC20(_token1).balanceOf(address(this));
+        _update(balance0, balance1, _reserve0, _reserve1);
+        if (feeOn) {
+            kLast = uint256(reserve0) * reserve1; //reserve0 and reserve1 are updated in _update
+        }
+
+        emit Burn(msg.sender, amount0, amount1, to);
+        return (amount0, amount1);
+    }
+
+    /**
      * @param to Recipient of the minted tokens
      * Note: this low-level function should be called from a contract which performs important safety checks
      * Total supply of LP could change at the time, so slippage protection must be implemented.
@@ -121,41 +156,6 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
 
         emit Mint(msg.sender, amount0, amount1);
         return liquidity;
-    }
-
-    /**
-     * Note: this low-level function should be called from a contract which performs important safety checks
-     * Amounts of token0 and token1 that the liquidity provider receives depends on the ratio of the LP tokens they
-     * burn to the total supply of LP topkens. But totalSupply can change before burn transaction finalized, so
-     * slippage protection must be implemented.
-     */
-    function burn(address to) external nonReentrant returns (uint256, uint256) {
-        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
-        address _token0 = token0;
-        address _token1 = token1;
-        uint256 balance0 = IERC20(_token0).balanceOf(address(this));
-        uint256 balance1 = IERC20(_token1).balanceOf(address(this));
-        uint256 liquidity = balanceOf(address(this));
-
-        bool feeOn = _mintFee(_reserve0, _reserve1);
-        uint256 _totalSupply = totalSupply(); //must be defined here since totalSupply can update in _mintFee
-        uint256 amount0 = (liquidity * balance0) / _totalSupply; //using balances ensures pro-rata distribution
-        uint256 amount1 = (liquidity * balance1) / _totalSupply; //using balances ensures pro-rata distribution
-        require(amount0 > 0 && amount1 > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY_BURNED");
-
-        _burn(address(this), liquidity);
-        SafeTransferLib.safeTransfer(_token0, to, amount0);
-        SafeTransferLib.safeTransfer(_token1, to, amount1);
-
-        balance0 = IERC20(_token0).balanceOf(address(this));
-        balance1 = IERC20(_token1).balanceOf(address(this));
-        _update(balance0, balance1, _reserve0, _reserve1);
-        if (feeOn) {
-            kLast = uint256(reserve0) * reserve1; //reserve0 and reserve1 are updated in _update
-        }
-
-        emit Burn(msg.sender, amount0, amount1, to);
-        return (amount0, amount1);
     }
 
     /**
