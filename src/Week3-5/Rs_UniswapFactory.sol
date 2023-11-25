@@ -21,7 +21,7 @@ contract UniswapFactory {
 
     event PairCreated(address indexed token0, address indexed token1, address pair, uint256 lengthAllPairs);
 
-    constructor(address _feeToSetter) public {
+    constructor(address _feeToSetter) {
         feeToSetter = _feeToSetter;
     }
 
@@ -29,7 +29,7 @@ contract UniswapFactory {
         return allPairs.length;
     }
 
-    function createPair(address tokenA, address tokenB) external returns (address) {
+    function createPair(address tokenA, address tokenB) external returns (address pair) {
         require(tokenA != tokenB, "UniswapFactory: Cannot create pair with same token");
         //sorts token addresses to create deterministic pair, ensures uniqueness in contract
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
