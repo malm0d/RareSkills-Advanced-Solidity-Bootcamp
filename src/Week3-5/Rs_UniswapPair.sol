@@ -11,6 +11,10 @@ import {UQ112x112} from "./UQ112x112.sol";
 import {FixedPointMathLib} from "@solady/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "@solady/src/utils/SafeTransferLib.sol";
 
+interface IUniswapPair {
+    function getReserves() external view returns (uint112, uint112, uint32);
+}
+
 /**
  * Note: Solady's sqrt function uses the Babylonian method for calculating sqrt
  * which ensures the floor is returned, so it rounds down.
@@ -51,6 +55,11 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     event Sync(uint112 reserve0, uint112 reserve1);
     event FlashLoan(address indexed receiver, address indexed token, uint256 amount, uint256 fee, bytes data);
 
+    modifier timeLock(uint256 time) {
+        require(block.timestamp <= time, "UniswapPair: TIMELOCK");
+        _;
+    }
+
     constructor() {
         factory = msg.sender;
     }
@@ -80,24 +89,27 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     }
 
     /**
-     * @param to Liquidity provider who is burning LP tokens to withdraw tokens
+     * @param lpTokenAmount Amount of LP tokens to burn
      * @param amount0Min Minimum amount of token0 to receive
      * @param amount1Min Minimum amount of token1 to receive
+     * @param deadline Time by which transaction must be included to effect the change
      * @return amount0 Amount of token0 returned from burning LP tokens
      * @return amount1 Amount of token1 returned from burning LP tokens
      *
      * Note: This implementation assumes users will interact directly with contract and not via router.
      * Amounts of token0 and token1 that the liquidity provider receives depends on the ratio of the LP tokens they
-     * burn to the total supply of LP topkens. But totalSupply can change before burn transaction finalized, so
+     * burn to the total supply of LP topkens. But total supply can change before burn transaction finalized, so
      * slippage protection must be implemented.
      */
     function burn(
-        address to,
+        uint256 lpTokenAmount,
         uint256 amount0Min,
-        uint256 amount1Min
+        uint256 amount1Min,
+        uint256 deadline
     )
         external
         nonReentrant
+        timeLock(deadline)
         returns (uint256, uint256)
     {
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
@@ -105,6 +117,8 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         address _token1 = token1;
         uint256 balance0 = IERC20(_token0).balanceOf(address(this));
         uint256 balance1 = IERC20(_token1).balanceOf(address(this));
+
+        SafeTransferLib.safeTransferFrom(address(this), msg.sender, address(this), lpTokenAmount);
         uint256 liquidity = balanceOf(address(this));
 
         bool feeOn = _mintFee(_reserve0, _reserve1);
@@ -125,8 +139,8 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         require(_totalSupply - liquidity > 0, "UniswapPair: ZERO_TOTAL_SUPPLY");
 
         _burn(address(this), liquidity);
-        SafeTransferLib.safeTransfer(_token0, to, amount0);
-        SafeTransferLib.safeTransfer(_token1, to, amount1);
+        SafeTransferLib.safeTransfer(_token0, msg.sender, amount0);
+        SafeTransferLib.safeTransfer(_token1, msg.sender, amount1);
 
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
@@ -135,13 +149,22 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
             kLast = uint256(reserve0) * reserve1; //reserve0 and reserve1 are updated in _update
         }
 
-        emit Burn(msg.sender, amount0, amount1, to);
+        emit Burn(msg.sender, amount0, amount1, msg.sender);
         return (amount0, amount1);
     }
 
     /**
-     * @param to Recipient of the minted tokens
-     * Note: this low-level function should be called from a contract which performs important safety checks
+     * @param _token0Arg Address of token0
+     * @param _token1Arg Address of token1
+     * @param amount0Specified Amount of token0 to add as liquidity
+     * @param amount1Specified Amount of token1 to add as liquidity
+     * @param amount0Min Minimum amount of token0 to add as liquidity
+     * @param amount1Min Minimum amount of token1 to add as liquidity
+     * @param deadline Time by which transaction must be included to effect the change
+     * @return liquidity Amount of LP tokens minted
+     *
+     * Note: This implementation assumes users will interact directly with contract and not via router.
+     * Supply ratio should also be checked so providers get the LP tokens they expect.
      * Total supply of LP could change at the time, so slippage protection must be implemented.
      *
      * If first liquidity provider, LP tokens minted is the geometric mean of amount0 and amount1, minus MINIMUM_LIQUIDITY.
@@ -154,16 +177,58 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
      * Subsequent liquidity providers are incentivized to add tokens in a ratio close to the current ratio of the pool.
      * The amount of LP tokens minted to these providers is the lower of the two ratios.
      */
-    function mint(address to) external nonReentrant returns (uint256) {
+    function mint(
+        address _token0Arg,
+        address _token1Arg,
+        uint256 amount0Specified,
+        uint256 amount1Specified,
+        uint256 amount0Min,
+        uint256 amount1Min,
+        uint256 deadline
+    )
+        external
+        nonReentrant
+        timeLock(deadline)
+        returns (uint256)
+    {
+        require(_token0Arg != address(0) || _token1Arg != address(0), "UniswapPair: ZERO_ADDRESS");
+        (address _token0, address _token1) = _sortTokens(_token0Arg, _token1Arg);
+        //create pair if it does not exist yet
+        bytes32 pairKey = keccak256(abi.encodePacked(_token0, _token1));
+        if (IUniswapFactory(factory).getPair(pairKey) == address(0)) {
+            IUniswapFactory(factory).createPair(_token0, _token1);
+        }
+        //Calculate correct amount of tokens to transfer from liquidity provider to maintain pool ratio.
+        //Also checks for slippage, so liquidity providers get the LP tokens they expect.
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
+        uint256 amount0Adjusted;
+        uint256 amount1Adjusted;
+        if (_reserve0 == 0 && _reserve1 == 0) {
+            (amount0Adjusted, amount1Adjusted) = (amount0Specified, amount1Specified);
+        } else {
+            uint256 amount1Correct = (amount0Specified * _reserve1) / _reserve0;
+            if (amount1Correct <= amount1Specified) {
+                require(amount1Correct >= amount1Min, "UniswapPair: SLIPPAGE_AMOUNT1");
+                (amount0Adjusted, amount1Adjusted) = (amount0Specified, amount1Correct);
+            } else {
+                uint256 amount0Correct = (amount1Specified * _reserve0) / _reserve1;
+                require(amount0Correct <= amount0Specified, "UniswapPair: SLIPPAGE_AMOUNT0");
+                require(amount0Correct >= amount0Min, "UniswapPair: SLIPPAGE_AMOUNT0");
+                (amount0Adjusted, amount1Adjusted) = (amount0Correct, amount1Specified);
+            }
+        }
+        //Transfer tokens from liquidity provider to pool
+        SafeTransferLib.safeTransferFrom(_token0, msg.sender, address(this), amount0Adjusted);
+        SafeTransferLib.safeTransferFrom(_token1, msg.sender, address(this), amount1Adjusted);
         uint256 balance0 = IERC20(token0).balanceOf(address(this));
         uint256 balance1 = IERC20(token1).balanceOf(address(this));
-        //Get amount of tokens sent as part of tx
+        //Get amount of tokens sent to pool by liquidity provider
         uint256 amount0 = balance0 - _reserve0;
         uint256 amount1 = balance1 - _reserve1;
-        uint256 liquidity;
+
         bool feeOn = _mintFee(_reserve0, _reserve1);
         uint256 _totalSupply = totalSupply(); //must be defined here since totalSupply can update in _mintFee
+        uint256 liquidity;
         if (_totalSupply == 0) {
             liquidity = FixedPointMathLib.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY); //permanently lock the first MINIMUM_LIQUIDITY LP tokens
@@ -172,7 +237,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
                 FixedPointMathLib.min((amount0 * _totalSupply) / _reserve0, (amount1 * _totalSupply) / _reserve1);
         }
         require(liquidity > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY_MINTED");
-        _mint(to, liquidity);
+        _mint(msg.sender, liquidity);
 
         _update(balance0, balance1, _reserve0, _reserve1);
         if (feeOn) {
@@ -377,6 +442,11 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
 
     function _flashFee(uint256 amount) private pure returns (uint256) {
         return amount * SWAP_FEES / BASE;
+    }
+
+    function _sortTokens(address tokenA, address tokenB) private pure returns (address, address) {
+        require(tokenA != tokenB, "UniswapPair: IDENTICAL_ADDRESSES");
+        return tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     }
 }
 
