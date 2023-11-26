@@ -11,6 +11,19 @@ import {RewardToken} from "./RewardToken.sol";
 import {SomeNFT} from "./SomeNFT.sol";
 
 /**
+ * Other notes, packing in this contract can also be done with a struct instead of handling bits:
+ *
+ * struct StakingInfo {
+ *     address owner;
+ *     uint86 claimTime;
+ * }
+ * mapping(uint256 => StakingInfo) public stakingInfo;
+ *
+ * This would still be packing the data, but we use a struct to make it easier for us to handle data.
+ * Through this, we can also utilize the `delete` keyword to clear the struct data.
+ */
+
+/**
  * The contract becomes the owner of the NFT when it is staked
  * Users can stake NFT and receive 10 RTs per day (24h)
  * Users can unstake their NFT anytime
@@ -29,8 +42,8 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
 
     SomeNFT public someNFTContract;
     RewardToken public rewardTokenContract;
-    uint24 public constant interval = 1 days; //fixed
-    uint8 public tokenDecimals;
+    uint256 public constant interval = 1 days; //fixed
+    uint256 public constant MINT_AMOUNT = 10 * (10 ** 18); //10 RTs
 
     /**
      * @dev maps token id to staking information
@@ -47,7 +60,6 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
     constructor(address _someNFT, address _rewardToken) Ownable(msg.sender) {
         someNFTContract = SomeNFT(_someNFT);
         rewardTokenContract = RewardToken(_rewardToken);
-        tokenDecimals = rewardTokenContract.decimals();
     }
 
     function onERC721Received(
@@ -65,14 +77,13 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
          * as the ERC721 contract itself will call this function when `_checkOnERC721Received` is called
          * in the execution of the `safeTransferFrom` function (fyi: also during _safeMint).
          *
-         * IMPORTANT: Check that the msg.sender is the ERC721 contract, and check that the tokenId is valid.
-         * Accept the token only if both conditions are satisfied, otherwise we must revert.
-         * These two checks are critical because a malicious NFT contract could have the same token ids.
+         * IMPORTANT: Check that the msg.sender is the ERC721 contract
+         * Accept the token only if condition is satisfied, otherwise we must revert.
          * See the `testTransferNFTFail` test in `Staking.t.sol`.
          */
         require(msg.sender == address(someNFTContract), "Caller is not the ERC721 contract");
-        require(!(tokenId > someNFTContract.currentSupply()), "Token ID is invalid");
         stakingInfo[tokenId] = _packStakingData(from);
+        emit StakedNFT(msg.sender, tokenId);
         return IERC721Receiver.onERC721Received.selector;
     }
 
@@ -93,11 +104,14 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
      * the transfer was successful (see `transferFrom` and `_update`). We do not need to do that here.
      * The checking of the trusted ERC721 contract and a valid token ID is done in `onERC721Received`.
      * This function ASSUMES that approval has already been granted, so it will revert if it has not.
+     *
+     * Note: This function is not strictly necessary, as we can just safe transfer to this contract for staking.
+     * The `safeTransferFrom` is called directly from the NFT contract, so an extra function here is not needed.
      */
-    function stakeNFT(uint256 _tokenId) external nonReentrant whenNotPaused {
-        someNFTContract.safeTransferFrom(msg.sender, address(this), _tokenId);
-        emit StakedNFT(msg.sender, _tokenId);
-    }
+    // function stakeNFT(uint256 _tokenId) external nonReentrant whenNotPaused {
+    //     someNFTContract.safeTransferFrom(msg.sender, address(this), _tokenId);
+    //     emit StakedNFT(msg.sender, _tokenId);
+    // }
 
     /**
      * @dev if the user has not claimed since the last 24 hours by the time they withdraw, they will be given
@@ -105,15 +119,18 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
      */
     function withdrawNFT(uint256 _tokenId) external nonReentrant whenNotPaused {
         require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can withdraw");
-        someNFTContract.safeTransferFrom(address(this), msg.sender, _tokenId);
 
         if (!(block.timestamp - getClaimTime(_tokenId) < interval)) {
-            rewardTokenContract.mintRewards(msg.sender, 10 * (10 ** tokenDecimals));
-            emit MintRewards(msg.sender, 10 * (10 ** tokenDecimals));
+            rewardTokenContract.mintRewards(msg.sender, MINT_AMOUNT);
+            emit MintRewards(msg.sender, MINT_AMOUNT);
         }
 
         //set the claimTime bits to 0
-        stakingInfo[_tokenId] = stakingInfo[_tokenId] & _BITMASK_ADDRESS;
+        //THIS MUST BE SET TO ZERO TO PREVENT REENTRANCY ATTACKS.
+        stakingInfo[_tokenId] = 0;
+
+        someNFTContract.safeTransferFrom(address(this), msg.sender, _tokenId);
+
         emit WithdrawNFT(msg.sender, _tokenId);
     }
 
@@ -127,11 +144,11 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
         require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can claim rewards for this token ID");
         require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
 
-        rewardTokenContract.mintRewards(msg.sender, 10 * (10 ** tokenDecimals));
-
         //update the claimTime bits to the current timestamp
         stakingInfo[_tokenId] = _packStakingData(msg.sender);
-        emit MintRewards(msg.sender, 10 * (10 ** tokenDecimals));
+        rewardTokenContract.mintRewards(msg.sender, MINT_AMOUNT);
+
+        emit MintRewards(msg.sender, MINT_AMOUNT);
     }
 
     function pause() external whenNotPaused onlyOwner {
