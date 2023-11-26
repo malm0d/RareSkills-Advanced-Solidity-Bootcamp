@@ -40,7 +40,7 @@ contract StakingTest is Test {
         vm.deal(normalUser, 1 ether);
         someNFT.mint{value: 1 ether}();
         vm.expectRevert();
-        stakingContract.stakeNFT(1);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 1);
     }
 
     function testTransferNFTFail() public {
@@ -58,7 +58,7 @@ contract StakingTest is Test {
         vm.deal(owner, 2 ether);
         someNFT.mint{value: 1 ether}(); // tokenId = 0
         someNFT.approve(address(stakingContract), 0);
-        stakingContract.stakeNFT(0);
+        someNFT.safeTransferFrom(owner, address(stakingContract), 0);
         address originalOwner = stakingContract.getOriginalOwner(0);
         assertEq(someNFT.ownerOf(0), address(stakingContract));
         assertEq(someNFT.balanceOf(address(stakingContract)), 1);
@@ -71,7 +71,7 @@ contract StakingTest is Test {
         vm.deal(normalUser, 1 ether);
         someNFT.mint{value: 1 ether}();
         someNFT.approve(address(stakingContract), 0);
-        stakingContract.stakeNFT(0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
         vm.stopPrank();
 
         vm.startPrank(owner);
@@ -86,7 +86,7 @@ contract StakingTest is Test {
         vm.deal(normalUser, 1 ether);
         someNFT.mint{value: 1 ether}();
         someNFT.approve(address(stakingContract), 0);
-        stakingContract.stakeNFT(0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
         uint256 initialClaimTime = stakingContract.getClaimTime(0);
 
         stakingContract.withdrawNFT(0);
@@ -105,7 +105,7 @@ contract StakingTest is Test {
         someNFT.mint{value: 1 ether}(); // tokenId = 0
         someNFT.mint{value: 1 ether}(); // tokenId = 1
         someNFT.approve(address(stakingContract), 0);
-        stakingContract.stakeNFT(0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
         vm.stopPrank();
 
         vm.startPrank(owner);
@@ -125,7 +125,7 @@ contract StakingTest is Test {
         vm.deal(normalUser, 5 ether);
         someNFT.mint{value: 1 ether}();
         someNFT.approve(address(stakingContract), 0);
-        stakingContract.stakeNFT(0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
         uint256 intialBalance = rewardToken.balanceOf(normalUser);
         vm.warp(1.5 days);
         stakingContract.claimRewards(0);
@@ -138,7 +138,7 @@ contract StakingTest is Test {
         vm.deal(normalUser, 1 ether);
         someNFT.mint{value: 1 ether}();
         someNFT.approve(address(stakingContract), 0);
-        stakingContract.stakeNFT(0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
         uint256 intialBalance = rewardToken.balanceOf(normalUser);
         vm.warp(1.1 days);
         stakingContract.withdrawNFT(0);
@@ -151,7 +151,7 @@ contract StakingTest is Test {
         vm.deal(normalUser, 2 ether);
         someNFT.mint{value: 1 ether}();
         someNFT.approve(address(stakingContract), 0);
-        stakingContract.stakeNFT(0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
         uint256 intialBalance = rewardToken.balanceOf(normalUser);
         vm.warp(1.1 days);
         stakingContract.claimRewards(0);
