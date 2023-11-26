@@ -33,7 +33,7 @@ contract Borrower is IERC3156FlashBorrower, Ownable2Step, ReentrancyGuard {
      * @param token The loan currency.
      * @param amount The amount of tokens lent.
      * @param fee The additional amount of tokens to repay.
-     * @param data Arbitrary data structure, intended to contain user-defined parameters.
+     * param data Arbitrary data structure, intended to contain user-defined parameters.
      * @return The keccak256 hash of "ERC3156FlashBorrower.onFlashLoan"
      *
      * Only a trusted address: `trustedInitiator` can initiate a flash loan with this contract.
@@ -45,7 +45,7 @@ contract Borrower is IERC3156FlashBorrower, Ownable2Step, ReentrancyGuard {
         address token,
         uint256 amount,
         uint256 fee,
-        bytes calldata data
+        bytes calldata /*data*/
     )
         external
         returns (bytes32)
