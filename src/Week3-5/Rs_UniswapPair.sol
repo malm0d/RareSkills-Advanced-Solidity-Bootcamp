@@ -134,7 +134,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         require(amount1 >= amount1Min, "UniswapPair: SLIPPAGE_AMOUNT1");
 
         //Ensure that burning LP tokens does not result in `totalSupply` going to zero, to prevent potential
-        //first deposit attack, where an attacker can manipulate pool by reducing `totalSupply` to zero, effectively
+        //attack where an attacker can manipulate pool by reducing `totalSupply` to zero, effectively
         //resetting the pool and becoming the first to deposit and set an unreasonable initial price ratio.
         require(_totalSupply - liquidity > 0, "UniswapPair: ZERO_TOTAL_SUPPLY");
 
@@ -238,7 +238,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         }
         require(liquidity > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY_MINTED");
         _mint(msg.sender, liquidity);
-
+        // Update reserves with current balances
         _update(balance0, balance1, _reserve0, _reserve1);
         if (feeOn) {
             kLast = uint256(reserve0) * reserve1; //reserve0 and reserve1 are updated in _update
@@ -249,49 +249,68 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     }
 
     /**
-     * @param amount0Out Amount of token0 to receive from the swap
-     * @param amount1Out Amount of token1 to receive from the swap
-     * @param to Recipient of the swap
+     * @param amountIn Amount of token0 or token1 as input for swap
+     * @param amountOutMin Minimum amount of token0 or token1 to receive as output from swap
+     * @param tokenIn Address of token to swap in
+     * @param tokenOut Address of token to swap out
+     * @param deadline Time by which transaction must be included to effect the change
+     * @return amountOut Amount of token0 or token1 received from swap
      *
-     * Note: this low-level function should be called from a contract which performs important safety checks
-     * Recall that `reserve` is previous balance, and `balance` is current balance.
-     * The user/calling contract has to supply a certain amount of one of the tokens to the pair contract (pool),
-     * before calling the `swap` function.
-     *
-     * In balancing X * Y = K, K either remains or increases. If it increases, it increases by an amount that
-     * enforces the 0.3% fee. The fee in only applied to incoming tokens from the swap.
-     * K new must be >= K prev.
+     * Note: This implementation assumes users will interact directly with contract and not via router.
+     * Swaps an exact amount of input tokens for as many output tokens as possible
      */
-    function swap(uint256 amount0Out, uint256 amount1Out, address to) external nonReentrant {
-        require(amount0Out > 0 || amount1Out > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+    function swapExactTokensInForTokensOut(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address tokenIn,
+        address tokenOut,
+        uint256 deadline
+    )
+        external
+        nonReentrant
+        timeLock(deadline)
+        returns (uint256)
+    {
+        require(amountIn > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+        (address _token0, address _token1) = _sortTokens(tokenIn, tokenOut);
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
-        require(amount0Out < _reserve0 && amount1Out < _reserve1, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+        (uint112 reserveIn, uint112 reserveOut) = (tokenIn == _token0) ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+        //Calculate amount of output tokens for caller to receive
+        //Check for slippage.
+        uint256 amountOutAdjusted = calculateForAmountOut(amountIn, reserveIn, reserveOut);
+        require(amountOutAdjusted >= amountOutMin, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+        //Transfer tokens from caller to pool
+        SafeTransferLib.safeTransferFrom(tokenIn, msg.sender, address(this), amountIn);
+        //Establish correct amounts out for `swap` function
+        (uint256 amount0Out, uint256 amount1Out) =
+            (tokenIn == _token0) ? (uint256(0), amountOutAdjusted) : (amountOutAdjusted, uint256(0));
+        swap(amount0Out, amount1Out, msg.sender);
+        return amountOutAdjusted;
+    }
 
-        address _token0 = token0;
-        address _token1 = token1;
-        require(to != _token0 && to != _token1, "UniswapPair: INVALID_TO");
-        // Optimistically transfer tokens - assumes incoming tokens are transferred to pool
-        if (amount0Out > 0) SafeTransferLib.safeTransfer(_token0, to, amount0Out);
-        if (amount1Out > 0) SafeTransferLib.safeTransfer(_token1, to, amount1Out);
-        // Get current balance of token0 & token1 held by this contract
-        uint256 balance0 = IERC20(_token0).balanceOf(address(this));
-        uint256 balance1 = IERC20(_token1).balanceOf(address(this));
-        // Calculate amount of token0 & token1 sent to the pool by the caller.
-        // Either there us a net increase or a net decrease (no change) in the amount of a particular token.
-        // If net decrease, then `amountIn` will be 0.
-        uint256 amount0In = (balance0 > _reserve0 - amount0Out) ? balance0 - (_reserve0 - amount0Out) : 0;
-        uint256 amount1In = (balance1 > _reserve1 - amount1Out) ? balance1 - (_reserve1 - amount1Out) : 0;
-        require(amount0In > 0 || amount1In > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
-        // Adjust balances by multiplying `amountIn` by the swap fee and subtracting from the balance.
-        uint256 balance0Adjusted = (balance0 * BASE) - (amount0In * SWAP_FEES);
-        uint256 balance1Adjusted = (balance1 * BASE) - (amount1In * SWAP_FEES);
-        // Ensure that new balances must increase by 0.3% of the amount in. Each term is scaled by 1000.
-        require(
-            (balance0Adjusted * balance1Adjusted) >= (uint256(_reserve0) * _reserve1 * (BASE ** 2)), "UniswapPair: K"
-        );
-        // Update reserves with current balances
-        _update(balance0, balance1, _reserve0, _reserve1);
-        emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
+    /**
+     * @param amountOut Amount of token0 or token1 as output from swap
+     * @param amountInMax Maximum amount of token0 or token1 to send as input for swap
+     * @param tokenIn Address of token to swap in
+     * @param tokenOut Address of token to swap out
+     * @param deadline Time by which transaction must be included to effect the change
+     * @return amountIn Amount of token0 or token1 sent for swap
+     * Note: This implementation assumes users will interact directly with contract and not via router.
+     * Swaps as many input tokens as possible for an exact amount of output tokens.
+     */
+    function swapTokensInForExactTokensOut(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address tokenIn,
+        address tokenOut,
+        uint256 deadline
+    )
+        external
+        nonReentrant
+        timeLock(deadline)
+        returns (uint256)
+    {
+        //TODO
     }
 
     /**
@@ -372,6 +391,52 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     //****************************************************************************************************
 
     /**
+     * @param amount0Out Amount of token0 to receive from the swap
+     * @param amount1Out Amount of token1 to receive from the swap
+     * @param to Recipient of the swap
+     *
+     * Note: this low-level function should be called from a contract which performs important safety checks
+     * Recall that `reserve` is previous balance, and `balance` is current balance.
+     * The user/calling contract has to supply a certain amount of one of the tokens to the pair contract (pool),
+     * before calling the `swap` function.
+     *
+     * In balancing X * Y = K, K either remains or increases. If it increases, it increases by an amount that
+     * enforces the 0.3% fee. The fee in only applied to incoming tokens from the swap.
+     * K new must be >= K prev.
+     */
+    function swap(uint256 amount0Out, uint256 amount1Out, address to) private nonReentrant {
+        require(amount0Out > 0 || amount1Out > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
+        require(amount0Out < _reserve0 && amount1Out < _reserve1, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+
+        address _token0 = token0;
+        address _token1 = token1;
+        require(to != _token0 && to != _token1, "UniswapPair: INVALID_TO");
+        // Optimistically transfer tokens - assumes incoming tokens are transferred to pool
+        if (amount0Out > 0) SafeTransferLib.safeTransfer(_token0, to, amount0Out);
+        if (amount1Out > 0) SafeTransferLib.safeTransfer(_token1, to, amount1Out);
+        // Get current balance of token0 & token1 held by this contract
+        uint256 balance0 = IERC20(_token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(_token1).balanceOf(address(this));
+        // Calculate amount of token0 & token1 sent to the pool by the caller.
+        // Either there us a net increase or a net decrease (no change) in the amount of a particular token.
+        // If net decrease, then `amountIn` will be 0.
+        uint256 amount0In = (balance0 > _reserve0 - amount0Out) ? balance0 - (_reserve0 - amount0Out) : 0;
+        uint256 amount1In = (balance1 > _reserve1 - amount1Out) ? balance1 - (_reserve1 - amount1Out) : 0;
+        require(amount0In > 0 || amount1In > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+        // Adjust balances by multiplying `amountIn` by the swap fee and subtracting from the balance.
+        uint256 balance0Adjusted = (balance0 * BASE) - (amount0In * SWAP_FEES);
+        uint256 balance1Adjusted = (balance1 * BASE) - (amount1In * SWAP_FEES);
+        // Ensure that new balances must increase by 0.3% of the amount in. Each term is scaled by 1000.
+        require(
+            (balance0Adjusted * balance1Adjusted) >= (uint256(_reserve0) * _reserve1 * (BASE ** 2)), "UniswapPair: K"
+        );
+        // Update reserves with current balances
+        _update(balance0, balance1, _reserve0, _reserve1);
+        emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
+    }
+
+    /**
      * Note: Updates the reserves.
      * TWAP oracle usage. Invoked on `mint`, `burn`, `swap`, `sync`.
      * Allow overflow, by leveraging on modular arithmetic props of uint32: it wraps around after exceeding
@@ -440,6 +505,50 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         return feeOn;
     }
 
+    /**
+     * Based on: (reserveX + amountInX) * (reserveY - amountOutY) = reserveX * reserveY)
+     * Solves for amountOutY = (amountInX * reserveY) / (reserveX + amountInX).
+     * Accounting for fees (0.3%): amountOutY = (amountInX * 997 * reserveY) / (reserveX * 1000 + amountInX * 997)
+     */
+    function calculateForAmountOut(
+        uint256 amountIn,
+        uint256 reserveIn,
+        uint256 reserveOut
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        require(amountIn > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+        require(reserveIn > 0 && reserveOut > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+        uint256 amountInWithFee = amountIn * 997;
+        uint256 numerator = amountInWithFee * reserveOut;
+        uint256 denominator = (reserveIn * 1000) + amountInWithFee;
+        return numerator / denominator;
+    }
+
+    /**
+     * Based on: (reserveX + amountInX) * (reserveY - amountOutY) = reserveX * reserveY)
+     * Solves for amountInX = (amountOutY * reserveX) / (reserveY - amountOutY)
+     * Accounting for fees (0.3%): amountInX = (amountOutY * reserveX * 1000) / ((reserveY - amountOutY) * 997))
+     * And accounting for rounding errors: amountInX + 1
+     */
+    function calculateForAmountIn(
+        uint256 amountOut,
+        uint256 reserveIn,
+        uint256 reserveOut
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        require(amountOut > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+        require(reserveIn > 0 && reserveOut > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+        uint256 numerator = (amountOut * reserveIn * 1000);
+        uint256 denominator = (reserveOut - amountOut) * 997;
+        return (numerator / denominator) + 1;
+    }
+
     function _flashFee(uint256 amount) private pure returns (uint256) {
         return amount * SWAP_FEES / BASE;
     }
@@ -449,11 +558,3 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         return tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
     }
 }
-
-//To do:
-//`burn` shluld have slippage check
-//`totalCupply` should have slippage checks
-//On swap,
-//The amountIn is not enforce to be optimal, so the user might overpay for the swap
-//AmountOut has no flexibility as it is supplied as a parameter argument.
-//If the amountIn turns out to not be sufficient relative to amountOut, the transaction will revert and gas will be wasted.
