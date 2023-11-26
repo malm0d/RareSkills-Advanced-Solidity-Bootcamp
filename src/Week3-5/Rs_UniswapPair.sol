@@ -11,10 +11,6 @@ import {UQ112x112} from "./UQ112x112.sol";
 import {FixedPointMathLib} from "@solady/src/utils/FixedPointMathLib.sol";
 import {SafeTransferLib} from "@solady/src/utils/SafeTransferLib.sol";
 
-interface IUniswapPair {
-    function getReserves() external view returns (uint112, uint112, uint32);
-}
-
 /**
  * Note: Solady's sqrt function uses the Babylonian method for calculating sqrt
  * which ensures the floor is returned, so it rounds down.
@@ -254,7 +250,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
      * @param tokenIn Address of token to swap in
      * @param tokenOut Address of token to swap out
      * @param deadline Time by which transaction must be included to effect the change
-     * @return amountOut Amount of token0 or token1 received from swap
+     * @return amountOutAdjusted Adjusted amount of token0 or token1 received from the swap
      *
      * Note: This implementation assumes users will interact directly with contract and not via router.
      * Swaps an exact amount of input tokens for as many output tokens as possible
@@ -272,7 +268,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         returns (uint256)
     {
         require(amountIn > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
-        (address _token0, address _token1) = _sortTokens(tokenIn, tokenOut);
+        (address _token0,) = _sortTokens(tokenIn, tokenOut);
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
         (uint112 reserveIn, uint112 reserveOut) = (tokenIn == _token0) ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
         //Calculate amount of output tokens for caller to receive
@@ -294,7 +290,8 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
      * @param tokenIn Address of token to swap in
      * @param tokenOut Address of token to swap out
      * @param deadline Time by which transaction must be included to effect the change
-     * @return amountIn Amount of token0 or token1 sent for swap
+     * @return amountInAdjusted Adjusted amount of token0 or token1 sent for the swap
+     *
      * Note: This implementation assumes users will interact directly with contract and not via router.
      * Swaps as many input tokens as possible for an exact amount of output tokens.
      */
@@ -310,7 +307,21 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         timeLock(deadline)
         returns (uint256)
     {
-        //TODO
+        require(amountOut > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+        (address _token0,) = _sortTokens(tokenIn, tokenOut);
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
+        (uint112 reserveIn, uint112 reserveOut) = (tokenIn == _token0) ? (_reserve0, _reserve1) : (_reserve1, _reserve0);
+        //Calculate amount of input tokens to transfer from caller to pool
+        //Check for slippage.
+        uint256 amountInAdjusted = calculateForAmountIn(amountOut, reserveIn, reserveOut);
+        require(amountInAdjusted <= amountInMax, "UniswapPair: EXCESSIVE_INPUT_AMOUNT");
+        //Transfer tokens from caller to pool
+        SafeTransferLib.safeTransferFrom(tokenIn, msg.sender, address(this), amountInAdjusted);
+        //Establish correct amounts out for `swap` function
+        (uint256 amount0Out, uint256 amount1Out) =
+            (tokenIn == _token0) ? (uint256(0), amountOut) : (amountOut, uint256(0));
+        swap(amount0Out, amount1Out, msg.sender);
+        return amountInAdjusted;
     }
 
     /**
