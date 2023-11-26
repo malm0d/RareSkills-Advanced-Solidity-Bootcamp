@@ -404,7 +404,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     /**
      * @param amount0Out Amount of token0 to receive from the swap
      * @param amount1Out Amount of token1 to receive from the swap
-     * @param to Recipient of the swap
+     * @param to Recipient of the swap - this should be the msg.sender in the context of this contract
      *
      * Note: this low-level function should be called from a contract which performs important safety checks
      * Recall that `reserve` is previous balance, and `balance` is current balance.
