@@ -14,6 +14,7 @@ import {SafeTransferLib} from "@solady/src/utils/SafeTransferLib.sol";
 /**
  * Note: Solady's sqrt function uses the Babylonian method for calculating sqrt
  * which ensures the floor is returned, so it rounds down.
+ * When compiling this contract, use --via-ir
  */
 contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     using UQ112x112 for uint224;
