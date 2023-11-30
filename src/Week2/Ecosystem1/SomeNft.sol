@@ -108,11 +108,11 @@ contract SomeNFT is ERC721, ERC2981, Ownable2Step, ReentrancyGuard {
      * BUT, this check can actually be bypassed by the calling contract if the call is made in its constructor, as it
      * will return 0 in this case. So this may not be entirely useful. Included just for educational purposes.
      */
-    function isContract(address _address) private view returns (bool) {
-        uint32 size;
-        assembly {
-            size := extcodesize(_address)
-        }
-        return (size > 0);
-    }
+    // function isContract(address _address) private view returns (bool) {
+    //     uint32 size;
+    //     assembly {
+    //         size := extcodesize(_address)
+    //     }
+    //     return (size > 0);
+    // }
 }
