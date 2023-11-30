@@ -183,7 +183,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         timeLock(deadline)
         returns (uint256)
     {
-        require(_token0Arg != address(0) || _token1Arg != address(0), "UniswapPair: ZERO_ADDRESS");
+        require(_token0Arg != address(0) && _token1Arg != address(0), "UniswapPair: ZERO_ADDRESS");
         (address _token0, address _token1) = _checkTokens(_token0Arg, _token1Arg);
 
         //Calculate correct amount of tokens to transfer from liquidity provider to maintain pool ratio.
@@ -401,7 +401,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
      * enforces the 0.3% fee. The fee in only applied to incoming tokens from the swap.
      * K new must be >= K prev.
      */
-    function swap(uint256 amount0Out, uint256 amount1Out, address to) private nonReentrant {
+    function swap(uint256 amount0Out, uint256 amount1Out, address to) private {
         require(amount0Out > 0 || amount1Out > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
         (uint112 _reserve0, uint112 _reserve1,) = getReserves();
         require(amount0Out < _reserve0 && amount1Out < _reserve1, "UniswapPair: INSUFFICIENT_LIQUIDITY");
@@ -528,8 +528,8 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
                 (amount0Adjusted, amount1Adjusted) = (amount0Specified, amount1Correct);
             } else {
                 uint256 amount0Correct = (amount1Specified * _reserve0) / _reserve1;
-                require(amount0Correct <= amount0Specified, "UniswapPair: SLIPPAGE_AMOUNT0");
-                require(amount0Correct >= amount0Min, "UniswapPair: SLIPPAGE_AMOUNT0");
+                require(amount0Correct <= amount0Specified, "UniswapPair: SLIPPAGE_AMOUNT0_SPECIFIED");
+                require(amount0Correct >= amount0Min, "UniswapPair: SLIPPAGE_AMOUNT0_MIN");
                 (amount0Adjusted, amount1Adjusted) = (amount0Correct, amount1Specified);
             }
         }
