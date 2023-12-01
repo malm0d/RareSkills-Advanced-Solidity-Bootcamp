@@ -6,6 +6,7 @@ import {UniswapFactory} from "../../src/Week3-5/Rs_UniswapFactory.sol";
 import {UniswapPair} from "../../src/Week3-5/Rs_UniswapPair.sol";
 import {UniToken} from "../../src/Week3-5/Rs_UniToken.sol";
 import {Borrower} from "../../src/Week3-5/Borrower.sol";
+import {FalseBorrower} from "./FalseBorrower.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 
 //forge test --via-ir --match-contract UniswapPairTest -vvvv
@@ -429,7 +430,7 @@ contract UniswapPairTest is Test {
         assertGt(tokenBBalanceFinal, tokenBBalanceInitial);
     }
 
-    function testSwapExactTokensInForTokenOutInsufficientIOAmounts() external {
+    function testSwapExactTokensInForTokensOutInsufficientIOAmounts() external {
         vm.startPrank(owner);
         tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
         tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
@@ -477,8 +478,6 @@ contract UniswapPairTest is Test {
         );
         vm.stopPrank();
         vm.startPrank(user1);
-        uint256 tokenABalanceInitial = tokenA.balanceOf(user1);
-        uint256 tokenBBalanceInitial = tokenB.balanceOf(user1);
         tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
         vm.expectRevert("UniswapPair: IDENTICAL_ADDRESSES");
         pair.swapExactTokensInForTokensOut(
@@ -504,12 +503,180 @@ contract UniswapPairTest is Test {
             address(tokenA),
             address(tokenB),
             1_000 * 10 ** 18,
-            500 * 10 ** 18,
-            900 * 10 ** 18,
-            400 * 10 ** 18,
+            1_000 * 10 ** 18,
+            999 * 10 ** 18,
+            999 * 10 ** 18,
             block.timestamp
         );
         vm.stopPrank();
+        vm.startPrank(user1);
+        uint256 tokenABalanceInitial = tokenA.balanceOf(user1);
+        uint256 tokenBBalanceInitial = tokenB.balanceOf(user1);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        pair.swapTokensInForExactTokensOut(
+            90 * 10 ** 18, 100 * 10 ** 18, address(tokenA), address(tokenB), block.timestamp
+        );
+        uint256 tokenABalanceFinal = tokenA.balanceOf(user1);
+        uint256 tokenBBalanceFinal = tokenB.balanceOf(user1);
+        assertGt(tokenABalanceInitial, tokenABalanceFinal);
+        assertGt(tokenBBalanceFinal, tokenBBalanceInitial);
+    }
+
+    function testSwapTokensInForExactTokensOutInsufficientIOAmounts() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            1_000 * 10 ** 18,
+            999 * 10 ** 18,
+            999 * 10 ** 18,
+            block.timestamp
+        );
+        vm.stopPrank();
+        vm.startPrank(user1);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        vm.expectRevert("UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+        pair.swapTokensInForExactTokensOut(0, 100 * 10 ** 18, address(tokenA), address(tokenB), block.timestamp);
+        vm.expectRevert("UniswapPair: EXCESSIVE_INPUT_AMOUNT");
+        pair.swapTokensInForExactTokensOut(
+            100 * 10 ** 18, 100 * 10 ** 18, address(tokenA), address(tokenB), block.timestamp
+        );
+    }
+
+    function testSwapTokensInForExactTokensOutDeadlinePassed() external {
+        vm.warp(10 days);
+        vm.startPrank(user1);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        vm.expectRevert("UniswapPair: TIMELOCK");
+        pair.swapTokensInForExactTokensOut(
+            90 * 10 ** 18, 100 * 10 ** 18, address(tokenA), address(tokenB), block.timestamp - 1 days
+        );
+    }
+
+    function testSwapTokensInForExactTokensOutIdenticalTokens() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            1_000 * 10 ** 18,
+            900 * 10 ** 18,
+            900 * 10 ** 18,
+            block.timestamp
+        );
+        vm.stopPrank();
+        vm.startPrank(user1);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        vm.expectRevert("UniswapPair: IDENTICAL_ADDRESSES");
+        pair.swapTokensInForExactTokensOut(
+            90 * 10 ** 18, 100 * 10 ** 18, address(tokenA), address(tokenA), block.timestamp
+        );
+    }
+
+    function testSwapTokensInForExactTokensOutNoReserves() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        vm.expectRevert("UniswapPair: INSUFFICIENT_LIQUIDITY");
+        pair.swapTokensInForExactTokensOut(
+            90 * 10 ** 18, 100 * 10 ** 18, address(tokenA), address(tokenB), block.timestamp
+        );
+    }
+
+    function testFlashLoanMagicValueFailed() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            1_000 * 10 ** 18,
+            999 * 10 ** 18,
+            999 * 10 ** 18,
+            block.timestamp
+        );
+        vm.stopPrank();
+        vm.startPrank(user1);
+        FalseBorrower borrower = new FalseBorrower(address(pair), user1);
+        uint256 flashFees = pair.flashFee(address(tokenA), 50 * 10 ** 18);
+        vm.expectRevert("UniswapPair: flash loan callback failed");
+        pair.flashLoan(borrower, address(tokenA), 50 * 10 ** 18, "");
+    }
+
+    function testFlashLoanWrongToken() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            1_000 * 10 ** 18,
+            999 * 10 ** 18,
+            999 * 10 ** 18,
+            block.timestamp
+        );
+        vm.stopPrank();
+        vm.startPrank(user1);
+        Borrower borrower = new Borrower(address(pair), user1);
+        uint256 flashFees = pair.flashFee(address(tokenA), 50 * 10 ** 18);
+        vm.expectRevert("UniswapPair: token must be either token0 or token1");
+        pair.flashLoan(borrower, address(0x572843023857abc), 50 * 10 ** 18, "");
+    }
+
+    function testFlashLoanAmountExceeded() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            1_000 * 10 ** 18,
+            999 * 10 ** 18,
+            999 * 10 ** 18,
+            block.timestamp
+        );
+        vm.stopPrank();
+        vm.startPrank(user1);
+        Borrower borrower = new Borrower(address(pair), user1);
+        uint256 flashFees = pair.flashFee(address(tokenA), 50 * 10 ** 18);
+        vm.expectRevert("UniswapPair: amount exceeds maxFlashLoan");
+        pair.flashLoan(borrower, address(tokenA), 1_001 * 10 ** 18, "");
+    }
+
+    function testFlashLoan() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            1_000 * 10 ** 18,
+            999 * 10 ** 18,
+            999 * 10 ** 18,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        Borrower borrower = new Borrower(address(pair), user1);
+        tokenA.transfer(address(borrower), 100 * 10 ** 18);
+        uint256 tokenABalanceInitial = tokenA.balanceOf(address(borrower));
+
+        uint256 flashFees = pair.flashFee(address(tokenA), 50 * 10 ** 18);
+        pair.flashLoan(borrower, address(tokenA), 20 * 10 ** 18, "");
+
+        uint256 tokenABalanceFinal = tokenA.balanceOf(address(borrower));
+        assertLt(tokenABalanceFinal, tokenABalanceInitial);
     }
 
     receive() external payable {}
