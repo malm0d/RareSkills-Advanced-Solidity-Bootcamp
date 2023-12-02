@@ -35,6 +35,7 @@ contract TokenSaleAndBuyback is BancorBondingCurve, ERC20, IERC1363Receiver, Own
 
     event Buy(address indexed to, uint256 amount);
     event Burn(address indexed from, uint256 amount);
+    event ReserveRatioUpdated(uint256 indexed newReserveRatio);
 
     constructor(address _reserveToken) ERC20("ContinuousToken", "CT") Ownable(msg.sender) {
         reserveRatio = 5e5; //500_000 (50%)
@@ -53,6 +54,8 @@ contract TokenSaleAndBuyback is BancorBondingCurve, ERC20, IERC1363Receiver, Own
         require(_reserveRatio > 0, "Reserve ratio must be greater than zero");
         require(!(_reserveRatio > 1000000), "Reserve ratio must be less than or equal to 1000000");
         reserveRatio = _reserveRatio;
+
+        emit ReserveRatioUpdated(_reserveRatio);
     }
 
     /**

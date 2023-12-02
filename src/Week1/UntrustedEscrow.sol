@@ -39,11 +39,14 @@ contract UntrustedEscrow is Ownable2Step {
     );
     event Withdraw(uint256 indexed escrowId);
     event Cancel(uint256 indexed escrowId);
+    event LockTimeUpdated(uint256 indexed newLockTime);
 
     constructor() Ownable(msg.sender) {}
 
     function updateLockTime(uint256 timeInDays) external onlyOwner {
         LOCK_TIME = timeInDays * 1 days;
+
+        emit LockTimeUpdated(LOCK_TIME);
     }
 
     function deposit(address _seller, address _token, uint256 _amount) external returns (uint256) {
