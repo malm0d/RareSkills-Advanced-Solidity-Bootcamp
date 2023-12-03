@@ -40,8 +40,8 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
      */
     uint256 private constant _BITPOS_START_TIMESTAMP = 160;
 
-    SomeNFT public someNFTContract;
-    RewardToken public rewardTokenContract;
+    SomeNFT public immutable someNFTContract;
+    RewardToken public immutable rewardTokenContract;
     uint256 public constant interval = 1 days; //fixed
     uint256 public constant MINT_AMOUNT = 10 * (10 ** 18); //10 RTs
 

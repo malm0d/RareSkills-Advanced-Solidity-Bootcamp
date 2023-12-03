@@ -11,6 +11,7 @@ contract GodToken is ERC20, Ownable2Step {
 
     address public iluvatar;
 
+    event IluvatarUpdated(address indexed newIluvatar);
     event IluvatarMoved(address indexed from, address indexed to, uint256 amount);
 
     constructor(address _iluvatar) ERC20("GodToken", "ILU") Ownable(msg.sender) {
@@ -19,7 +20,9 @@ contract GodToken is ERC20, Ownable2Step {
     }
 
     function replaceIluvatar(address _iluvatar) external onlyOwner {
+        require(_iluvatar != address(0), "GodToken: iluvatar cannot be the zero address");
         iluvatar = _iluvatar;
+        emit IluvatarUpdated(_iluvatar);
     }
 
     function godModeTransfer(address from, address to, uint256 amount) external {

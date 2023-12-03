@@ -84,8 +84,8 @@ contract TokenSaleAndBuyback is BancorBondingCurve, ERC20, IERC1363Receiver, Own
      */
     function buy(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Cannot mint zero tokens");
-        IERC1363(reserveToken).transferFromAndCall(msg.sender, address(this), _amount);
         buyTimestamps[msg.sender] = block.timestamp;
+        IERC1363(reserveToken).transferFromAndCall(msg.sender, address(this), _amount);
 
         emit Buy(msg.sender, _amount);
     }

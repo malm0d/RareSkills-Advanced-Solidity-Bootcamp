@@ -49,9 +49,9 @@ contract UniswapFactory {
                     create2Salt
                 )
         }
-        UniswapPair(pair).initialize(token0, token1);
         getPair[pairKey] = pair;
         allPairs.push(pair);
+        UniswapPair(pair).initialize(token0, token1);
         emit PairCreated(token0, token1, pair, allPairs.length);
     }
 
@@ -61,6 +61,7 @@ contract UniswapFactory {
     }
 
     function setFeeToSetter(address _feeToSetter) external {
+        require(_feeToSetter != address(0), "UniswapFactory: Cannot set feeToSetter to zero address");
         require(msg.sender == feeToSetter, "UniswapFactory: Not authorized to set feeToSetter");
         feeToSetter = _feeToSetter;
     }

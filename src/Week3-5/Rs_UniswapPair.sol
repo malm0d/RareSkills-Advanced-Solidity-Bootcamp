@@ -26,7 +26,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     bytes32 public constant CALLBACK_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes("transfer(address,uint256)")));
 
-    address public factory;
+    address public immutable factory;
     address public token0;
     address public token1;
 
