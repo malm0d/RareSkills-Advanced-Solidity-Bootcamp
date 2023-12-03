@@ -127,8 +127,8 @@ contract StakingTest is Test {
         assertEq(someNFT.balanceOf(normalUser), 1);
     }
 
-    function testWithdrawNFT() public {
-        vm.warp(1 days);
+    function testWithdrawNFTBefore24Hours() public {
+        vm.warp(2 days);
 
         vm.startPrank(normalUser);
         vm.deal(normalUser, 1 ether);
@@ -142,8 +142,7 @@ contract StakingTest is Test {
         assertEq(someNFT.ownerOf(0), normalUser);
         assertEq(someNFT.balanceOf(address(stakingContract)), 0);
         assertEq(someNFT.balanceOf(normalUser), 1);
-        assertEq(initialClaimTime, 1 days);
-        assertNotEq(initialClaimTime, finalClaimTime);
+        assertEq(initialClaimTime, 2 days);
         assertEq(finalClaimTime, 0);
     }
 
@@ -162,6 +161,23 @@ contract StakingTest is Test {
         assertEq(someNFT.balanceOf(address(stakingContract)), 0);
         assertEq(someNFT.balanceOf(normalUser), 1);
         assertEq(finalBalance - initialBalance, 10 * (10 ** 18));
+    }
+
+    function testWithdrawOn24Hours() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 1 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
+        uint256 initialBalance = rewardToken.balanceOf(normalUser);
+
+        vm.warp(1 days);
+        stakingContract.withdrawNFT(0);
+        uint256 finalBalance = rewardToken.balanceOf(normalUser);
+        assertEq(someNFT.ownerOf(0), normalUser);
+        assertEq(someNFT.balanceOf(address(stakingContract)), 0);
+        assertEq(someNFT.balanceOf(normalUser), 1);
+        assertEq(finalBalance, initialBalance);
     }
 
     function testClaimRewardsFail() public {
@@ -196,6 +212,18 @@ contract StakingTest is Test {
         stakingContract.claimRewards(0);
         uint256 finalBalance = rewardToken.balanceOf(normalUser);
         assertEq(finalBalance - intialBalance, 10 * (10 ** 18));
+    }
+
+    function testClaimRewardsOn24Hours() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
+
+        vm.warp(1 days);
+        vm.expectRevert("Can only claim after every 24 hours");
+        stakingContract.claimRewards(0);
     }
 
     function testWithdrawNFTWithoutClaimingRewardsAfter24Hours() public {
