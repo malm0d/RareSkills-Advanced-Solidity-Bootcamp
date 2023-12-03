@@ -1,0 +1,141 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - lcov.info - src/Week1/src/Week1/SanctionToken.sol</title>
+  <link rel="stylesheet" type="text/css" href="../../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../../index.html">top level</a> - <a href="index.html">src/Week1/src/Week1</a> - SanctionToken.sol<span style="font-size: 80%;"> (source / <a href="SanctionToken.sol.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">lcov.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryLo">69.2&nbsp;%</td>
+            <td class="headerCovTableEntry">13</td>
+            <td class="headerCovTableEntry">9</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2023-11-30 00:36:39</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryLo">60.0&nbsp;%</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">3</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class="headerItem">Branches:</td>
+            <td class="headerCovTableEntryLo">50.0&nbsp;%</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntry">6</td>
+          </tr>
+                  <tr><td><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">             Branch data     Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>                 :             : // SPDX-License-Identifier: MIT</span>
+<span id="L2"><span class="lineNum">       2</span>                 :             : pragma solidity 0.8.21;</span>
+<span id="L3"><span class="lineNum">       3</span>                 :             : </span>
+<span id="L4"><span class="lineNum">       4</span>                 :             : import {ERC20} from &quot;@openzeppelin/contracts/token/ERC20/ERC20.sol&quot;;</span>
+<span id="L5"><span class="lineNum">       5</span>                 :             : import {SafeERC20} from &quot;@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol&quot;;</span>
+<span id="L6"><span class="lineNum">       6</span>                 :             : import {Ownable2Step} from &quot;@openzeppelin/contracts/access/Ownable2Step.sol&quot;;</span>
+<span id="L7"><span class="lineNum">       7</span>                 :             : import {Ownable} from &quot;@openzeppelin/contracts/access/Ownable.sol&quot;;</span>
+<span id="L8"><span class="lineNum">       8</span>                 :             : </span>
+<span id="L9"><span class="lineNum">       9</span>                 :             : contract SanctionToken is ERC20, Ownable2Step {</span>
+<span id="L10"><span class="lineNum">      10</span>                 :             :     using SafeERC20 for ERC20;</span>
+<span id="L11"><span class="lineNum">      11</span>                 :             : </span>
+<span id="L12"><span class="lineNum">      12</span>                 :             :     mapping(address =&gt; bool) public sanctionList;</span>
+<span id="L13"><span class="lineNum">      13</span>                 :             : </span>
+<span id="L14"><span class="lineNum">      14</span>                 :             :     event BanAccount(address indexed _address);</span>
+<span id="L15"><span class="lineNum">      15</span>                 :             :     event UnbanAccount(address indexed _address);</span>
+<span id="L16"><span class="lineNum">      16</span>                 :             : </span>
+<span id="L17"><span class="lineNum">      17</span>                 :             :     constructor(uint256 _initialSupply) ERC20(&quot;SanctionToken&quot;, &quot;ST&quot;) Ownable(msg.sender) {</span>
+<span id="L18"><span class="lineNum">      18</span>                 :             :         _mint(msg.sender, _initialSupply);</span>
+<span id="L19"><span class="lineNum">      19</span>                 :             :     }</span>
+<span id="L20"><span class="lineNum">      20</span>                 :             : </span>
+<span id="L21"><span class="lineNum">      21</span>                 :<span class="tlaGNC tlaBgGNC">           3 :     function banAddress(address _address) external onlyOwner {</span></span>
+<span id="L22"><span class="lineNum">      22</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 3 times"> + </span>]:<span class="tlaGNC">           3 :         require(!sanctionList[_address], &quot;Address is already banned&quot;);</span></span>
+<span id="L23"><span class="lineNum">      23</span>                 :<span class="tlaGNC">           3 :         sanctionList[_address] = true;</span></span>
+<span id="L24"><span class="lineNum">      24</span>                 :             : </span>
+<span id="L25"><span class="lineNum">      25</span>                 :<span class="tlaGNC">           3 :         emit BanAccount(_address);</span></span>
+<span id="L26"><span class="lineNum">      26</span>                 :             :     }</span>
+<span id="L27"><span class="lineNum">      27</span>                 :             : </span>
+<span id="L28"><span class="lineNum">      28</span>                 :<span class="tlaGNC">           1 :     function unbanAddress(address _address) external onlyOwner {</span></span>
+<span id="L29"><span class="lineNum">      29</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaGBC" title="Branch 1 was taken 1 time"> + </span>]:<span class="tlaGNC">           1 :         require(sanctionList[_address], &quot;Address is not banned&quot;);</span></span>
+<span id="L30"><span class="lineNum">      30</span>                 :<span class="tlaGNC">           1 :         sanctionList[_address] = false;</span></span>
+<span id="L31"><span class="lineNum">      31</span>                 :             : </span>
+<span id="L32"><span class="lineNum">      32</span>                 :<span class="tlaGNC">           1 :         emit UnbanAccount(_address);</span></span>
+<span id="L33"><span class="lineNum">      33</span>                 :             :     }</span>
+<span id="L34"><span class="lineNum">      34</span>                 :             : </span>
+<span id="L35"><span class="lineNum">      35</span>                 :<span class="tlaUNC tlaBgUNC">           0 :     function mint(address _to, uint256 _amount) external {</span></span>
+<span id="L36"><span class="lineNum">      36</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaUNC" title="Branch 1 was not executed"> # </span>]:<span class="tlaUNC">           0 :         require(_amount &gt; 0, &quot;Cannot mint zero tokens&quot;);</span></span>
+<span id="L37"><span class="lineNum">      37</span>                 :<span class="tlaUNC">           0 :         _mint(_to, _amount);</span></span>
+<span id="L38"><span class="lineNum">      38</span>                 :             :     }</span>
+<span id="L39"><span class="lineNum">      39</span>                 :             : </span>
+<span id="L40"><span class="lineNum">      40</span>                 :<span class="tlaUNC">           0 :     function burn(address _from, uint256 _amount) external {</span></span>
+<span id="L41"><span class="lineNum">      41</span>         [<span class="tlaUNC" title="Branch 0 was not executed"> # </span><span class="tlaUNC" title="Branch 1 was not executed"> # </span>]:<span class="tlaUNC">           0 :         require(_amount &gt; 0, &quot;Cannot burn zero tokens&quot;);</span></span>
+<span id="L42"><span class="lineNum">      42</span>                 :<span class="tlaUNC">           0 :         _burn(_from, _amount);</span></span>
+<span id="L43"><span class="lineNum">      43</span>                 :             :     }</span>
+<span id="L44"><span class="lineNum">      44</span>                 :             : </span>
+<span id="L45"><span class="lineNum">      45</span>                 :             :     /**</span>
+<span id="L46"><span class="lineNum">      46</span>                 :             :      * @dev Overrides ERC20's _update function by introducing a check to see if the `from` or `to` address are</span>
+<span id="L47"><span class="lineNum">      47</span>                 :             :      * in the sanctionList. If they are, it will revert.</span>
+<span id="L48"><span class="lineNum">      48</span>                 :             :      * FYI: ERC20's `_beforeTokenTransfer` and `_afterTokenTransfer` have been replaced with `_update` in v5.x</span>
+<span id="L49"><span class="lineNum">      49</span>                 :             :      * The _update function is called by the _transfer, _transferFrom, _mint, _burn, functions of ERC20.</span>
+<span id="L50"><span class="lineNum">      50</span>                 :             :      */</span>
+<span id="L51"><span class="lineNum">      51</span>                 :<span class="tlaGNC tlaBgGNC">          10 :     function _update(address from, address to, uint256 value) internal override {</span></span>
+<span id="L52"><span class="lineNum">      52</span>         [<span class="tlaGBC" title="Branch 0 was taken 2 times"> + </span><span class="tlaGBC" title="Branch 1 was taken 8 times"> + </span>]:<span class="tlaGNC">          10 :         require(!sanctionList[from], &quot;Sender is sanctioned&quot;);</span></span>
+<span id="L53"><span class="lineNum">      53</span>         [<span class="tlaGBC" title="Branch 0 was taken 1 time"> + </span><span class="tlaGBC" title="Branch 1 was taken 7 times"> + </span>]:<span class="tlaGNC">           8 :         require(!sanctionList[to], &quot;Recipient is sanctioned&quot;);</span></span>
+<span id="L54"><span class="lineNum">      54</span>                 :<span class="tlaGNC">           7 :         super._update(from, to, value);</span></span>
+<span id="L55"><span class="lineNum">      55</span>                 :             :     }</span>
+<span id="L56"><span class="lineNum">      56</span>                 :             : }</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
