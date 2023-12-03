@@ -43,7 +43,7 @@ contract StakingTest is Test {
         someNFT.safeTransferFrom(normalUser, address(stakingContract), 1);
     }
 
-    function testTransferNFTFail() public {
+    function testTransferNFTFailUntrustedContract() public {
         vm.startPrank(owner);
         vm.deal(owner, 2 ether);
         someNFT.mint{value: 1 ether}(); // tokenId = 0
@@ -79,6 +79,54 @@ contract StakingTest is Test {
         stakingContract.withdrawNFT(0);
     }
 
+    function testWithdrawNFTFailOnPaused() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 1 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        vm.deal(owner, 1 ether);
+        stakingContract.pause();
+        vm.stopPrank();
+
+        vm.startPrank(normalUser);
+        vm.expectRevert();
+        stakingContract.withdrawNFT(0);
+    }
+
+    function testWithdrawNFTUnpaused() public {
+        vm.warp(1 days);
+
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 1 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        vm.deal(owner, 1 ether);
+        stakingContract.pause();
+        vm.stopPrank();
+
+        vm.startPrank(normalUser);
+        vm.expectRevert();
+        stakingContract.withdrawNFT(0);
+
+        vm.startPrank(owner);
+        stakingContract.unpause();
+        vm.stopPrank();
+
+        vm.startPrank(normalUser);
+        stakingContract.withdrawNFT(0);
+        assertEq(someNFT.ownerOf(0), normalUser);
+        assertEq(someNFT.balanceOf(address(stakingContract)), 0);
+        assertEq(someNFT.balanceOf(normalUser), 1);
+    }
+
     function testWithdrawNFT() public {
         vm.warp(1 days);
 
@@ -97,6 +145,23 @@ contract StakingTest is Test {
         assertEq(initialClaimTime, 1 days);
         assertNotEq(initialClaimTime, finalClaimTime);
         assertEq(finalClaimTime, 0);
+    }
+
+    function testWithdrawAfter24Hours() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 1 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
+        uint256 initialBalance = rewardToken.balanceOf(normalUser);
+
+        vm.warp(1.1 days);
+        stakingContract.withdrawNFT(0);
+        uint256 finalBalance = rewardToken.balanceOf(normalUser);
+        assertEq(someNFT.ownerOf(0), normalUser);
+        assertEq(someNFT.balanceOf(address(stakingContract)), 0);
+        assertEq(someNFT.balanceOf(normalUser), 1);
+        assertEq(finalBalance - initialBalance, 10 * (10 ** 18));
     }
 
     function testClaimRewardsFail() public {
@@ -160,6 +225,54 @@ contract StakingTest is Test {
         stakingContract.withdrawNFT(0);
         uint256 finalBalance = rewardToken.balanceOf(normalUser);
         assertEq(finalBalance - intialBalance, 2 * (10 * (10 ** 18)));
+    }
+
+    function testClaimRewardsFailOnPaused() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        vm.deal(owner, 1 ether);
+        stakingContract.pause();
+        vm.stopPrank();
+
+        vm.startPrank(normalUser);
+        vm.warp(1.5 days);
+        vm.expectRevert();
+        stakingContract.claimRewards(0);
+    }
+
+    function testClaimRewardsUnpaused() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 0);
+        uint256 intialBalance = rewardToken.balanceOf(normalUser);
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        vm.deal(owner, 1 ether);
+        stakingContract.pause();
+        vm.stopPrank();
+
+        vm.startPrank(normalUser);
+        vm.warp(1.5 days);
+        vm.expectRevert();
+        stakingContract.claimRewards(0);
+
+        vm.startPrank(owner);
+        stakingContract.unpause();
+        vm.stopPrank();
+
+        vm.startPrank(normalUser);
+        stakingContract.claimRewards(0);
+        uint256 finalBalance = rewardToken.balanceOf(normalUser);
+        assertEq(finalBalance - intialBalance, 10 * (10 ** 18));
     }
 
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {

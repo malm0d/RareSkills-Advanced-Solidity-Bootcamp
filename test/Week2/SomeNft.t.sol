@@ -3,7 +3,9 @@ pragma solidity 0.8.21;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {SomeNFT} from "../../src/Week2/Ecosystem1/SomeNFT.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
+//forge test --match-contract SomeNFTTest -vvvv
 contract SomeNFTTest is Test {
     SomeNFT someNFT;
     address owner;
@@ -20,6 +22,31 @@ contract SomeNFTTest is Test {
         userWithDiscount2 = 0x0000000000000000000000000000000000000002;
         normalUser = address(0x100);
         someNFT = new SomeNFT(merkleRoot, royaltyReceiver);
+    }
+
+    function testRoyaltyZeroAddress() public {
+        vm.expectRevert("Cannot be the zero address");
+        new SomeNFT(merkleRoot, address(0));
+    }
+
+    function testWithdrawFunds() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5000000 ether);
+        someNFT.mint{value: 1 ether}();
+
+        vm.startPrank(owner);
+        uint256 balanceBefore = address(owner).balance;
+        someNFT.withdrawFunds();
+        uint256 balanceAfter = address(owner).balance;
+        assertGt(balanceAfter, balanceBefore);
+    }
+
+    function testWithdrawFundsFail() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5000000 ether);
+        someNFT.mint{value: 1 ether}();
+        vm.expectRevert();
+        someNFT.withdrawFunds();
     }
 
     function testMintWithDiscount() public {
@@ -84,11 +111,32 @@ contract SomeNFTTest is Test {
         vm.stopPrank();
     }
 
+    function testMintWithDiscountFailsOnRoyaltyPayment() public {
+        RejectingReceiver rejectingReceiver = new RejectingReceiver();
+        SomeNFT someNFT_testContract = new SomeNFT(merkleRoot, address(rejectingReceiver));
+
+        vm.startPrank(userWithDiscount1);
+        bytes32[] memory proofUser1 = new bytes32[](3);
+        proofUser1[0] = 0x50bca9edd621e0f97582fa25f616d475cabe2fd783c8117900e5fed83ec22a7c;
+        proofUser1[1] = 0x63340ab877f112a2b7ccdbf0eb0f6d9f757ab36ecf6f6e660df145bcdfb67a19;
+        proofUser1[2] = 0x4faf7b0021ef54912575fc1dca53650228f33fe7ae7f3bf151ce2b9faa8e6ffd;
+        vm.deal(userWithDiscount1, 1 ether);
+        vm.expectRevert("Royalties payment failed");
+        someNFT_testContract.mintWithDiscount{value: 0.5 ether}(proofUser1, 0);
+    }
+
     function testMint() public {
         vm.startPrank(normalUser);
         vm.deal(normalUser, 1 ether);
         someNFT.mint{value: 1 ether}();
         assertEq(someNFT.balanceOf(normalUser), 1);
+    }
+
+    function testMintWrongPrice() external {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 1 ether);
+        vm.expectRevert("Incorrect payment amount");
+        someNFT.mint{value: 0.9 ether}();
     }
 
     function testMintOutOfSupply() public {
@@ -102,16 +150,14 @@ contract SomeNFTTest is Test {
         vm.stopPrank();
     }
 
-    function testWithdraw() public {
-        vm.startPrank(normalUser);
-        vm.deal(normalUser, 5000000 ether);
-        someNFT.mint{value: 1 ether}();
+    function testMintFailsOnRoyaltyPayment() public {
+        RejectingReceiver rejectingReceiver = new RejectingReceiver();
+        SomeNFT someNFT_testContract = new SomeNFT(merkleRoot, address(rejectingReceiver));
 
-        vm.startPrank(owner);
-        uint256 balanceBefore = address(owner).balance;
-        someNFT.withdrawFunds();
-        uint256 balanceAfter = address(owner).balance;
-        assertGt(balanceAfter, balanceBefore);
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 1 ether);
+        vm.expectRevert("Royalties payment failed");
+        someNFT_testContract.mint{value: 1 ether}();
     }
 
     function testRoyalties() public {
@@ -127,5 +173,43 @@ contract SomeNFTTest is Test {
         assertGt(balanceAfter, balanceBefore);
     }
 
+    function testSupportsInterface() public {
+        //interface Id for ERC721 is 0x80ac58cd
+        //interface Id for ERC2981 is 0x2a55205a
+        assertEq(someNFT.supportsInterface(0x80ac58cd), true);
+        assertEq(someNFT.supportsInterface(0x2a55205a), true);
+        assertEq(someNFT.supportsInterface(0x780e9d63), false);
+    }
+
+    function testReentrancyGuard() public {
+        MaliciousContract maliciousContract = new MaliciousContract(address(someNFT));
+        vm.deal(address(maliciousContract), 10 ether);
+        vm.expectRevert();
+        maliciousContract.mintNFTAttack();
+    }
+
     receive() external payable {}
+}
+
+contract RejectingReceiver {
+    receive() external payable {
+        revert("RejectingReceiver: Revert");
+    }
+}
+
+contract MaliciousContract is IERC721Receiver {
+    SomeNFT public someNFT;
+
+    constructor(address _nftContract) {
+        someNFT = SomeNFT(_nftContract);
+    }
+
+    function mintNFTAttack() external {
+        someNFT.mint{value: 1 ether}();
+    }
+
+    function onERC721Received(address, address, uint256, bytes calldata) external returns (bytes4) {
+        someNFT.mint{value: 1 ether}();
+        return IERC721Receiver.onERC721Received.selector;
+    }
 }
