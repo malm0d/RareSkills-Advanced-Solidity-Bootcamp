@@ -33,6 +33,7 @@ contract SomeNFTTest is Test {
         vm.startPrank(normalUser);
         vm.deal(normalUser, 5000000 ether);
         someNFT.mint{value: 1 ether}();
+        vm.stopPrank();
 
         vm.startPrank(owner);
         uint256 balanceBefore = address(owner).balance;
@@ -46,6 +47,23 @@ contract SomeNFTTest is Test {
         vm.deal(normalUser, 5000000 ether);
         someNFT.mint{value: 1 ether}();
         vm.expectRevert();
+        someNFT.withdrawFunds();
+    }
+
+    function testWithdrawLowLevelCallFail() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5000000 ether);
+        someNFT.mint{value: 1 ether}();
+        vm.stopPrank();
+
+        RejectingReceiver rejectingReceiver = new RejectingReceiver();
+        vm.startPrank(address(this));
+        someNFT.transferOwnership(address(rejectingReceiver));
+        vm.stopPrank();
+
+        vm.startPrank(address(rejectingReceiver));
+        someNFT.acceptOwnership();
+        vm.expectRevert("Withdrawal failed");
         someNFT.withdrawFunds();
     }
 
