@@ -22,8 +22,4 @@ contract RewardToken is ERC20, Ownable2Step {
         require(msg.sender == stakingContract, "Only staking contract can mint rewards");
         _mint(_to, _amount);
     }
-
-    function mintToOwner(uint256 _amount) external onlyOwner {
-        _mint(msg.sender, _amount);
-    }
 }
