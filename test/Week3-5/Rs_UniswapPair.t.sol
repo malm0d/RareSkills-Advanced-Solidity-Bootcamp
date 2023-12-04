@@ -7,6 +7,7 @@ import {UniswapPair} from "../../src/Week3-5/Rs_UniswapPair.sol";
 import {UniToken} from "../../src/Week3-5/Rs_UniToken.sol";
 import {Borrower} from "../../src/Week3-5/Borrower.sol";
 import {FalseBorrower} from "./FalseBorrower.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 
 //forge test --via-ir --match-contract UniswapPairTest -vvvv
@@ -36,6 +37,29 @@ contract UniswapPairTest is Test {
         deal(address(tokenB), user1, 1_000_000_000 * 10 ** 18);
         deal(address(tokenA), user2, 1_000_000_000 * 10 ** 18);
         deal(address(tokenB), user2, 1_000_000_000 * 10 ** 18);
+    }
+
+    function testFactoryFeeToSetter() public {
+        vm.expectRevert("UniswapFactory: Cannot set feeToSetter to zero address");
+        UniswapFactory _factory = new UniswapFactory(address(0));
+
+        vm.startPrank(owner);
+        vm.expectRevert("UniswapFactory: Cannot set feeToSetter to zero address");
+        factory.setFeeToSetter(address(0));
+        vm.stopPrank();
+
+        vm.startPrank(user1);
+        vm.expectRevert("UniswapFactory: Not authorized to set feeToSetter");
+        factory.setFeeToSetter(user1);
+    }
+
+    function testFactoryCreatePair() public {
+        UniswapFactory _factory = new UniswapFactory(owner);
+        vm.expectRevert("UniswapFactory: Cannot create pair with same token");
+        UniswapPair _pair = UniswapPair(factory.createPair(address(tokenA), address(tokenA)));
+
+        vm.expectRevert("UniswapFacory: Cannot create pair with zero address");
+        UniswapPair _pair2 = UniswapPair(factory.createPair(address(tokenA), address(0)));
     }
 
     function testFirstLiquidityProvider() external {
@@ -679,5 +703,93 @@ contract UniswapPairTest is Test {
         assertLt(tokenABalanceFinal, tokenABalanceInitial);
     }
 
+    function testMaxFlashLoan() external {
+        vm.startPrank(owner);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        uint256 liquidity = pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            1_000 * 10 ** 18,
+            999 * 10 ** 18,
+            999 * 10 ** 18,
+            block.timestamp
+        );
+        vm.stopPrank();
+
+        address nonPairToken = address(0x0123);
+        vm.expectRevert("UniswapPair: token must be either token0 or token1");
+        assertEq(pair.maxFlashLoan(nonPairToken), 0);
+
+        assertLt(pair.maxFlashLoan(address(tokenA)), 1_000 * 10 ** 18);
+        assertLt(pair.maxFlashLoan(address(tokenB)), 1_000 * 10 ** 18);
+        assertGt(pair.maxFlashLoan(address(tokenA)), 900 * 10 ** 18);
+        assertGt(pair.maxFlashLoan(address(tokenB)), 900 * 10 ** 18);
+
+        vm.startPrank(owner);
+        pair.burn(liquidity, 0, 0, block.timestamp);
+        assertEq(pair.maxFlashLoan(address(tokenA)), 0);
+    }
+
+    function testCalculateForAmountOut() public {
+        TestInternalFunctions _pair = new TestInternalFunctions();
+        vm.expectRevert("UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+        _pair.testCalculateForAmountOut(0, 100, 100);
+        vm.expectRevert("UniswapPair: INSUFFICIENT_LIQUIDITY");
+        _pair.testCalculateForAmountOut(100, 0, 100);
+
+        uint256 amountOut = _pair.testCalculateForAmountOut(10, 100, 100);
+        assertEq(amountOut, 9);
+    }
+
+    function testCalculateForAmountIn() public {
+        TestInternalFunctions _pair = new TestInternalFunctions();
+        vm.expectRevert("UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+        _pair.testCalculateForAmountIn(0, 100, 100);
+        vm.expectRevert("UniswapPair: INSUFFICIENT_LIQUIDITY");
+        _pair.testCalculateForAmountIn(100, 0, 100);
+
+        uint256 amountIn = _pair.testCalculateForAmountIn(10, 100, 100);
+        assertEq(amountIn, 12);
+    }
+
+    function testUpdateBorrower() public {
+        Borrower borrower = new Borrower(address(pair), user1);
+        vm.expectRevert("Borrower: trustedInitiator cannot be the zero address");
+        borrower.updateTrustedInitiator(address(0));
+        vm.expectRevert("Borrower: lender cannot be the zero address");
+        borrower.updateLender(address(0));
+        vm.startPrank(user2);
+        vm.expectRevert();
+        borrower.updateTrustedInitiator(user2);
+        vm.expectRevert();
+        borrower.updateLender(user2);
+    }
+
     receive() external payable {}
+}
+
+contract TestInternalFunctions is UniswapPair {
+    function testCalculateForAmountOut(
+        uint256 amountIn,
+        uint256 reserveIn,
+        uint256 reserveOut
+    )
+        public
+        returns (uint256)
+    {
+        return super.calculateForAmountOut(amountIn, reserveIn, reserveOut);
+    }
+
+    function testCalculateForAmountIn(
+        uint256 amountOut,
+        uint256 reserveIn,
+        uint256 reserveOut
+    )
+        public
+        returns (uint256)
+    {
+        return super.calculateForAmountIn(amountOut, reserveIn, reserveOut);
+    }
 }

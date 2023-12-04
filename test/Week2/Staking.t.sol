@@ -303,7 +303,39 @@ contract StakingTest is Test {
         assertEq(finalBalance - intialBalance, 10 * (10 ** 18));
     }
 
+    function testReentrancy() public {
+        MaliciousContract maliciousContract = new MaliciousContract(address(stakingContract));
+        vm.startPrank(address(maliciousContract));
+        vm.deal(address(maliciousContract), 5 ether);
+        someNFT.mint{value: 1 ether}();
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(address(maliciousContract), address(stakingContract), 0);
+        vm.warp(block.timestamp + 1 days + 1);
+        vm.expectRevert("Can only claim after every 24 hours");
+        maliciousContract.attack(0);
+    }
+
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
+    }
+}
+
+contract MaliciousContract is IERC721Receiver {
+    StakingNFT public stakingNFTContract;
+
+    constructor(address _stakingContract) {
+        stakingNFTContract = StakingNFT(_stakingContract);
+    }
+
+    function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    function attack(uint256 _tokenId) public {
+        // First call to claimRewards
+        stakingNFTContract.claimRewards(_tokenId);
+
+        // This is the reentrant call that should be prevented by the nonReentrant guard
+        stakingNFTContract.claimRewards(_tokenId);
     }
 }
