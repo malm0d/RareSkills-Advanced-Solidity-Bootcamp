@@ -72,18 +72,19 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
     //**************************************** EXTERNAL FUNCTIONS ****************************************
     //****************************************************************************************************
 
-    // force balances to match reserves
-    function skim(address to) external nonReentrant {
-        address _token0 = token0; // gas savings
-        address _token1 = token1; // gas savings
-        SafeTransferLib.safeTransfer(_token0, to, IERC20(_token0).balanceOf(address(this)) - reserve0);
-        SafeTransferLib.safeTransfer(_token1, to, IERC20(_token1).balanceOf(address(this)) - reserve1);
-    }
+    //Removed because not using.
+    // // force balances to match reserves
+    // function skim(address to) external nonReentrant {
+    //     address _token0 = token0; // gas savings
+    //     address _token1 = token1; // gas savings
+    //     SafeTransferLib.safeTransfer(_token0, to, IERC20(_token0).balanceOf(address(this)) - reserve0);
+    //     SafeTransferLib.safeTransfer(_token1, to, IERC20(_token1).balanceOf(address(this)) - reserve1);
+    // }
 
-    // force reserves to match balances
-    function sync() external nonReentrant {
-        _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
-    }
+    // // force reserves to match balances
+    // function sync() external nonReentrant {
+    //     _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
+    // }
 
     /**
      * @param lpTokenAmount Amount of LP tokens to burn
@@ -376,6 +377,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
      * Returns 0 if reserve amount is not sufficient.
      */
     function maxFlashLoan(address tokenToLoan) public view returns (uint256) {
+        require(tokenToLoan == token0 || tokenToLoan == token1, "UniswapPair: token must be either token0 or token1");
         uint256 reserveAmount = (tokenToLoan == token0) ? reserve0 : reserve1;
         if (reserveAmount > MINIMUM_LIQUIDITY) {
             return reserveAmount - MINIMUM_LIQUIDITY;

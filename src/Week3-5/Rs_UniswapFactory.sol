@@ -22,6 +22,7 @@ contract UniswapFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint256 lengthAllPairs);
 
     constructor(address _feeToSetter) {
+        require(_feeToSetter != address(0), "UniswapFactory: Cannot set feeToSetter to zero address");
         feeToSetter = _feeToSetter;
     }
 
