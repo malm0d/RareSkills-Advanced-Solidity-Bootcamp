@@ -54,12 +54,14 @@ contract UniswapPairTest is Test {
     }
 
     function testFactoryCreatePair() public {
-        UniswapFactory _factory = new UniswapFactory(owner);
         vm.expectRevert("UniswapFactory: Cannot create pair with same token");
-        UniswapPair _pair = UniswapPair(factory.createPair(address(tokenA), address(tokenA)));
+        UniswapPair _pair1 = UniswapPair(factory.createPair(address(tokenA), address(tokenA)));
 
         vm.expectRevert("UniswapFacory: Cannot create pair with zero address");
         UniswapPair _pair2 = UniswapPair(factory.createPair(address(tokenA), address(0)));
+
+        vm.expectRevert("UniswapFactory: Pair already exists in contract");
+        UniswapPair _pair3 = UniswapPair(factory.createPair(address(tokenA), address(tokenB)));
     }
 
     function testFirstLiquidityProvider() external {

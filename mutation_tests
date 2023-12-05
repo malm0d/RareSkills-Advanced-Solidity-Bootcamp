@@ -1,0 +1,1303 @@
+Mutation testing report:
+Number of mutations:    118
+Killed:                 22 / 118
+
+Mutations:
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 868
+    Result: Lived
+    Original line:
+                 uint256 x = roundDiv(_a * MAX_WEIGHT, _a + _b);
+
+    Mutated line:
+                 uint256 x = roundDiv(_a * MAX_WEIGHT, _a - _b);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 844
+    Result: Lived
+    Original line:
+                 if (_b < FIXED_2) return (FIXED_2, (_b * FIXED_2) / _a);
+
+    Mutated line:
+                 if (_b <= FIXED_2) return (FIXED_2, (_b * FIXED_2) / _a);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 681
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem2/IsPrimeOnSteroids.sol
+    Line nr: 73
+    Result: Lived
+    Original line:
+                 for (uint256 i = 5; i * i <= n;) {
+
+    Mutated line:
+                 for (uint256 i = 5; i / i <= n;) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 877
+    Result: Lived
+    Original line:
+                 return _n / _d + (_n % _d) / (_d - _d / 2);
+
+    Mutated line:
+                 return _n / _d + (_n % _d) / (_d + _d / 2);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 563
+    Result: Killed
+    Original line:
+                 z = (z * y) / FIXED_1;
+
+    Mutated line:
+                 z = (z * y) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 428
+    Result: Lived
+    Original line:
+                 res += xi * 0x00000000000052b6b54569976310000; // add x^17 * (33! / 17!)
+
+    Mutated line:
+                 res -= xi * 0x00000000000052b6b54569976310000; // add x^17 * (33! / 17!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 674
+    Result: Lived
+    Original line:
+                 res -= xi * 0x000000bac08546b867cdaa20000000000000000000; // sub x^(16-1) * (34! * 16^(16-1) / 16!)
+
+    Mutated line:
+                 res -= xi / 0x000000bac08546b867cdaa20000000000000000000; // sub x^(16-1) * (34! * 16^(16-1) / 16!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Borrower.sol
+    Line nr: 24
+    Result: Lived
+    Original line:
+             function updateLender(address _lender) external onlyOwner {
+
+    Mutated line:
+             function updateLender(address _lender) external  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/BancorBondingCurve.sol
+    Line nr: 87
+    Result: Killed
+    Original line:
+                 return newTokenSupply - _supply;
+
+    Mutated line:
+                 return newTokenSupply + _supply;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 354
+    Result: Lived
+    Original line:
+                     for (uint8 s = 128; s > 0; s >>= 1) {
+
+    Mutated line:
+                     for (uint8 s = 128; s >= 0; s >>= 1) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/BancorBondingCurve.sol
+    Line nr: 121
+    Result: Killed
+    Original line:
+                 require(_supply > 0, "Supply must be greater than zero");
+
+    Mutated line:
+                 require(_supply <= 0, "Supply must be greater than zero");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 553
+    Result: Lived
+    Original line:
+                 require(reserveIn > 0 && reserveOut > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+
+    Mutated line:
+                 require(reserveIn >= 0 && reserveOut > 0, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 697
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 28
+    Result: Error
+    Original line:
+             constructor(bytes32 _merkleRoot, address _royaltyReceiver) ERC721("SomeNFT", "SOME") Ownable(msg.sender) {
+
+    Mutated line:
+             constructor(bytes32 _merkleRoot, address _royaltyReceiver)  Ownable(msg.sender) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 665
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 429
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) >> _precision;
+
+    Mutated line:
+                 xi = (xi * _x) << _precision;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 798
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi / _x) / FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 592
+    Result: Lived
+    Original line:
+                 res += z * 0x0000000000000001; // add y^20 * (20! / 20!)
+
+    Mutated line:
+                 res -= z * 0x0000000000000001; // add y^20 * (20! / 20!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 570
+    Result: Lived
+    Original line:
+                 res += z * 0x00000618fee9f800; // add y^09 * (20! / 09!)
+
+    Mutated line:
+                 res -= z * 0x00000618fee9f800; // add y^09 * (20! / 09!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 765
+    Result: Lived
+    Original line:
+                 res += xi * 0x0000000233c33c676a5eb2416094a87b3657000000; // add x^(11-1) * (34! * 11^(11-1) / 11!)
+
+    Mutated line:
+                 res -= xi * 0x0000000233c33c676a5eb2416094a87b3657000000; // add x^(11-1) * (34! * 11^(11-1) / 11!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/BancorBondingCurve.sol
+    Line nr: 135
+    Result: Killed
+    Original line:
+                 if (_reserveRatio == MAX_RESERVE_RATIO) {
+
+    Mutated line:
+                 if (_reserveRatio != MAX_RESERVE_RATIO) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 660
+    Result: Lived
+    Original line:
+                 res += xi * 0x0000000066ebaac4c37c622dd8288a7eb1b2000000; // add x^(09-1) * (34! * 09^(09-1) / 09!)
+
+    Mutated line:
+                 res -= xi * 0x0000000066ebaac4c37c622dd8288a7eb1b2000000; // add x^(09-1) * (34! * 09^(09-1) / 09!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 678
+    Result: Lived
+    Original line:
+                 res -= xi * 0x000004851d99f82060df265f3309b26f8200000000; // sub x^(18-1) * (34! * 18^(18-1) / 18!)
+
+    Mutated line:
+                 res += xi * 0x000004851d99f82060df265f3309b26f8200000000; // sub x^(18-1) * (34! * 18^(18-1) / 18!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 438
+    Result: Lived
+    Original line:
+                 res += xi * 0x000000000000000001b722e10ab1000; // add x^22 * (33! / 22!)
+
+    Mutated line:
+                 res -= xi * 0x000000000000000001b722e10ab1000; // add x^22 * (33! / 22!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 452
+    Result: Lived
+    Original line:
+                         price0CumulativeLast += uint256(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
+
+    Mutated line:
+                         price0CumulativeLast += uint256(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) / timeElapsed;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 122
+    Result: Killed
+    Original line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) < interval)) {
+
+    Mutated line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) >= interval)) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 401
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) >> _precision;
+
+    Mutated line:
+                 xi = (xi / _x) >> _precision;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 501
+    Result: Killed
+    Original line:
+                     x = (x * FIXED_1) / 0x84102b00893f64c705e841d5d4064bd3;
+
+    Mutated line:
+                     x = (x / FIXED_1) / 0x84102b00893f64c705e841d5d4064bd3;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 735
+    Result: Lived
+    Original line:
+                 uint256 l2 = l1 < OPT_LOG_MAX_VAL ? optimalLog(l1) : generalLog(l1);
+
+    Mutated line:
+                 uint256 l2 = l1 <= OPT_LOG_MAX_VAL ? optimalLog(l1) : generalLog(l1);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 670
+    Result: Lived
+    Original line:
+                 res -= xi * 0x0000001edb2aa2f760d15c41ceedba956400000000; // sub x^(14-1) * (34! * 14^(14-1) / 14!)
+
+    Mutated line:
+                 res -= xi / 0x0000001edb2aa2f760d15c41ceedba956400000000; // sub x^(14-1) * (34! * 14^(14-1) / 14!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 337
+    Result: Killed
+    Original line:
+                 require(token == token0 || token == token1, "UniswapPair: token must be either token0 or token1");
+
+    Mutated line:
+                 require(token != token0 || token == token1, "UniswapPair: token must be either token0 or token1");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 584
+    Result: Lived
+    Original line:
+                 res += z * 0x000000000001c638; // add y^16 * (20! / 16!)
+
+    Mutated line:
+                 res += z / 0x000000000001c638; // add y^16 * (20! / 16!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 449
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) >> _precision;
+
+    Mutated line:
+                 xi = (xi / _x) >> _precision;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 26
+    Result: Lived
+    Original line:
+                 _mint(msg.sender, _amount);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 45
+    Result: Killed
+    Original line:
+                 require(msg.value == MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
+
+    Mutated line:
+                 require(msg.value == MINT_PRICE * DISCOUNT_FACTOR, "Incorrect payment amount");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 776
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 775
+    Result: Lived
+    Original line:
+                 res += xi * 0x000000bac08546b867cdaa20000000000000000000; // add x^(16-1) * (34! * 16^(16-1) / 16!)
+
+    Mutated line:
+                 res += xi / 0x000000bac08546b867cdaa20000000000000000000; // add x^(16-1) * (34! * 16^(16-1) / 16!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 613
+    Result: Killed
+    Original line:
+                 if ((x & 0x400000000000000000000000000000000) != 0) {
+
+    Mutated line:
+                 if ((x | 0x400000000000000000000000000000000) != 0) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 490
+    Result: Lived
+    Original line:
+                         if (rootK > rootKLast) {
+
+    Mutated line:
+                         if (rootK >= rootKLast) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 424
+    Result: Lived
+    Original line:
+                 res += xi * 0x000000000057e22099c030d94100000; // add x^15 * (33! / 15!)
+
+    Mutated line:
+                 res += xi / 0x000000000057e22099c030d94100000; // add x^15 * (33! / 15!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 788
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 491
+    Result: Lived
+    Original line:
+                             uint256 numerator = totalSupply() * (rootK - rootKLast);
+
+    Mutated line:
+                             uint256 numerator = totalSupply() / (rootK - rootKLast);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 450
+    Result: Lived
+    Original line:
+                     if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
+
+    Mutated line:
+                     if (timeElapsed > 0 && _reserve0 == 0 && _reserve1 != 0) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 558
+    Result: Lived
+    Original line:
+                 res += z * 0x05a0913f6b1e0000; // add y^03 * (20! / 03!)
+
+    Mutated line:
+                 res += z / 0x05a0913f6b1e0000; // add y^03 * (20! / 03!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 528
+    Result: Lived
+    Original line:
+                 res += (z * (0x08ba2e8ba2e8ba2e8ba2e8ba2e8ba2e8b - y)) / 0x600000000000000000000000000000000;
+
+    Mutated line:
+                 res -= (z * (0x08ba2e8ba2e8ba2e8ba2e8ba2e8ba2e8b - y)) / 0x600000000000000000000000000000000;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 679
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 794
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 869
+    Result: Lived
+    Original line:
+                 uint256 y = MAX_WEIGHT - x;
+
+    Mutated line:
+                 uint256 y = MAX_WEIGHT + x;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 680
+    Result: Lived
+    Original line:
+                 res += xi * 0x00000b550d19b129d270c44f6f55f027723cbb0000; // add x^(19-1) * (34! * 19^(19-1) / 19!)
+
+    Mutated line:
+                 res -= xi * 0x00000b550d19b129d270c44f6f55f027723cbb0000; // add x^(19-1) * (34! * 19^(19-1) / 19!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem2/IsPrimeOnSteroids.sol
+    Line nr: 82
+    Result: Lived
+    Original line:
+                         i += 6;
+
+    Mutated line:
+                         i -= 6;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 552
+    Result: Lived
+    Original line:
+                 require(amountIn > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+
+    Mutated line:
+                 require(amountIn >= 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 374
+    Result: Lived
+    Original line:
+                 while (lo + 1 < hi) {
+
+    Mutated line:
+                 while (lo + 1 <= hi) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 519
+    Result: Killed
+    Original line:
+                 z = (z * w) / FIXED_1; // add y^01 / 01 - y^02 / 02
+
+    Mutated line:
+                 z = (z * w) * FIXED_1; // add y^01 / 01 - y^02 / 02
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/BancorBondingCurve.sol
+    Line nr: 124
+    Result: Lived
+    Original line:
+                 require(!(_reserveRatio > MAX_RESERVE_RATIO), "Reserve ratio must be less than or equal to 1000000");
+
+    Mutated line:
+                 require(!(_reserveRatio >= MAX_RESERVE_RATIO), "Reserve ratio must be less than or equal to 1000000");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 526
+    Result: Killed
+    Original line:
+                         require(amount1Correct >= amount1Min, "UniswapPair: SLIPPAGE_AMOUNT1");
+
+    Mutated line:
+                         require(amount1Correct < amount1Min, "UniswapPair: SLIPPAGE_AMOUNT1");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 406
+    Result: Lived
+    Original line:
+                 res += xi * 0x002529ca9832b22439efff9b8000000; // add x^06 * (33! / 06!)
+
+    Mutated line:
+                 res -= xi * 0x002529ca9832b22439efff9b8000000; // add x^06 * (33! / 06!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 75
+    Result: Lived
+    Original line:
+             function skim(address to) external nonReentrant {
+
+    Mutated line:
+             function skim(address to) external  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 843
+    Result: Lived
+    Original line:
+                 if (_a < FIXED_2) return ((_a * FIXED_2) / _b, FIXED_2);
+
+    Mutated line:
+                 if (_a <= FIXED_2) return ((_a * FIXED_2) / _b, FIXED_2);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 782
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 775
+    Result: Lived
+    Original line:
+                 res += xi * 0x000000bac08546b867cdaa20000000000000000000; // add x^(16-1) * (34! * 16^(16-1) / 16!)
+
+    Mutated line:
+                 res -= xi * 0x000000bac08546b867cdaa20000000000000000000; // add x^(16-1) * (34! * 16^(16-1) / 16!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 55
+    Result: Killed
+    Original line:
+                 require(block.timestamp <= time, "UniswapPair: TIMELOCK");
+
+    Mutated line:
+                 require(block.timestamp > time, "UniswapPair: TIMELOCK");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 399
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) >> _precision;
+
+    Mutated line:
+                 xi = (xi / _x) >> _precision;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/TokenSaleAndBuyback.sol
+    Line nr: 54
+    Result: Lived
+    Original line:
+                 require(!(_reserveRatio > 1000000), "Reserve ratio must be less than or equal to 1000000");
+
+    Mutated line:
+                 require(!(_reserveRatio >= 1000000), "Reserve ratio must be less than or equal to 1000000");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 800
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 248
+    Result: Killed
+    Original line:
+                 timeLock(deadline)
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 774
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 791
+    Result: Lived
+    Original line:
+                 res += xi * 0x0004a1c37bd9f85fd9c6c780000000000000000000; // add x^(24-1) * (34! * 24^(24-1) / 24!)
+
+    Mutated line:
+                 res -= xi * 0x0004a1c37bd9f85fd9c6c780000000000000000000; // add x^(24-1) * (34! * 24^(24-1) / 24!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 698
+    Result: Lived
+    Original line:
+                 res -= xi * 0x00c8c8f66db1fced378ee50e536000000000000000; // sub x^(28-1) * (34! * 28^(28-1) / 28!)
+
+    Mutated line:
+                 res -= xi / 0x00c8c8f66db1fced378ee50e536000000000000000; // sub x^(28-1) * (34! * 28^(28-1) / 28!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 583
+    Result: Killed
+    Original line:
+                 return amount * SWAP_FEES / BASE;
+
+    Mutated line:
+                 return amount * SWAP_FEES * BASE;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 751
+    Result: Lived
+    Original line:
+                 res += xi * 0x0000000002504a0cd9a7f7215b60f9be4800000000; // add x^(04-1) * (34! * 04^(04-1) / 04!)
+
+    Mutated line:
+                 res -= xi * 0x0000000002504a0cd9a7f7215b60f9be4800000000; // add x^(04-1) * (34! * 04^(04-1) / 04!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 379
+    Result: Lived
+    Original line:
+                 if (reserveAmount > MINIMUM_LIQUIDITY) {
+
+    Mutated line:
+                 if (reserveAmount >= MINIMUM_LIQUIDITY) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 809
+    Result: Lived
+    Original line:
+                 res += xi * 0x5b0485a76f6646c2039db1507cdd51b08649680822; // add x^(33-1) * (34! * 33^(33-1) / 33!)
+
+    Mutated line:
+                 res -= xi * 0x5b0485a76f6646c2039db1507cdd51b08649680822; // add x^(33-1) * (34! * 33^(33-1) / 33!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 120
+    Result: Killed
+    Original line:
+                 require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can withdraw");
+
+    Mutated line:
+                 require(msg.sender != getOriginalOwner(_tokenId), "Only the original owner can withdraw");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 750
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 734
+    Result: Lived
+    Original line:
+                 uint256 l1 = _x < OPT_LOG_MAX_VAL ? optimalLog(_x) : generalLog(_x);
+
+    Mutated line:
+                 uint256 l1 = _x >= OPT_LOG_MAX_VAL ? optimalLog(_x) : generalLog(_x);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 661
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi / _x) / FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 293
+    Result: Killed
+    Original line:
+                 require(_baseN < MAX_NUM);
+
+    Mutated line:
+                 require(_baseN >= MAX_NUM);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 772
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 524
+    Result: Killed
+    Original line:
+                     uint256 amount1Correct = (amount0Specified * _reserve1) / _reserve0;
+
+    Mutated line:
+                     uint256 amount1Correct = (amount0Specified * _reserve1) * _reserve0;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/BancorBondingCurve.sol
+    Line nr: 73
+    Result: Lived
+    Original line:
+                 require(!(_reserveRatio > MAX_RESERVE_RATIO), "Reserve ratio must be less than or equal to 1000000");
+
+    Mutated line:
+                 require(!(_reserveRatio >= MAX_RESERVE_RATIO), "Reserve ratio must be less than or equal to 1000000");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 654
+    Result: Lived
+    Original line:
+                 res -= xi * 0x00000000095ec580d7e8427a4baf26a90a00000000; // sub x^(06-1) * (34! * 06^(06-1) / 06!)
+
+    Mutated line:
+                 res -= xi / 0x00000000095ec580d7e8427a4baf26a90a00000000; // sub x^(06-1) * (34! * 06^(06-1) / 06!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 647
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi / _x) / FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Borrower.sol
+    Line nr: 25
+    Result: Lived
+    Original line:
+                 require(_lender != address(0), "Borrower: lender cannot be the zero address");
+
+    Mutated line:
+                 require(_lender == address(0), "Borrower: lender cannot be the zero address");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Borrower.sol
+    Line nr: 14
+    Result: Error
+    Original line:
+             constructor(address _lender, address _trustedInitiator) Ownable(msg.sender) {
+
+    Mutated line:
+             constructor(address _lender, address _trustedInitiator)  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 684
+    Result: Lived
+    Original line:
+                 res += xi * 0x000048178ece97479f33a77f2ad22a81b64406c000; // add x^(21-1) * (34! * 21^(21-1) / 21!)
+
+    Mutated line:
+                 res += xi / 0x000048178ece97479f33a77f2ad22a81b64406c000; // add x^(21-1) * (34! * 21^(21-1) / 21!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 596
+    Result: Killed
+    Original line:
+                     if (IUniswapFactory(factory).getPair(pairKey) == address(0)) {
+
+    Mutated line:
+                     if (IUniswapFactory(factory).getPair(pairKey) != address(0)) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 157
+    Result: Error
+    Original line:
+             function unpause() external whenPaused onlyOwner {
+
+    Mutated line:
+             function unpause() externased onlyOwner {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 525
+    Result: Killed
+    Original line:
+                     if (amount1Correct <= amount1Specified) {
+
+    Mutated line:
+                     if (amount1Correct < amount1Specified) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 794
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi / _x) / FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 833
+    Result: Lived
+    Original line:
+                 uint256 x = (g * _tq) / _rp;
+
+    Mutated line:
+                 uint256 x = (g / _tq) / _rp;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 720
+    Result: Lived
+    Original line:
+                 uint256 x = _x - LAMBERT_CONV_RADIUS - 1;
+
+    Mutated line:
+                 uint256 x = _x + LAMBERT_CONV_RADIUS - 1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 776
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi / _x) / FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 460
+    Result: Lived
+    Original line:
+                 res += xi * 0x0000000000000000000000000000001; // add x^33 * (33! / 33!)
+
+    Mutated line:
+                 res += xi / 0x0000000000000000000000000000001; // add x^33 * (33! / 33!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 449
+    Result: Lived
+    Original line:
+                     uint32 timeElapsed = blockTimestamp - blockTimestampLast;
+
+    Mutated line:
+                     uint32 timeElapsed = blockTimestamp + blockTimestampLast;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 768
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi / _x) / FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/BancorBondingCurve.sol
+    Line nr: 125
+    Result: Killed
+    Original line:
+                 require(!(_sellAmount > _supply), "Sell amount must be less than or equal to supply");
+
+    Mutated line:
+                 require(!(_sellAmount <= _supply), "Sell amount must be less than or equal to supply");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 755
+    Result: Lived
+    Original line:
+                 res += xi * 0x00000000095ec580d7e8427a4baf26a90a00000000; // add x^(06-1) * (34! * 06^(06-1) / 06!)
+
+    Mutated line:
+                 res += xi / 0x00000000095ec580d7e8427a4baf26a90a00000000; // add x^(06-1) * (34! * 06^(06-1) / 06!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 677
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi / _x) / FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 378
+    Result: Lived
+    Original line:
+                 uint256 reserveAmount = (tokenToLoan == token0) ? reserve0 : reserve1;
+
+    Mutated line:
+                 uint256 reserveAmount = (tokenToLoan != token0) ? reserve0 : reserve1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 446
+    Result: Lived
+    Original line:
+                 res += xi * 0x00000000000000000000005035ad900; // add x^26 * (33! / 26!)
+
+    Mutated line:
+                 res -= xi * 0x00000000000000000000005035ad900; // add x^26 * (33! / 26!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 487
+    Result: Lived
+    Original line:
+                     if (_kLast != 0) {
+
+    Mutated line:
+                     if (_kLast == 0) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 690
+    Result: Lived
+    Original line:
+                 res -= xi * 0x0004a1c37bd9f85fd9c6c780000000000000000000; // sub x^(24-1) * (34! * 24^(24-1) / 24!)
+
+    Mutated line:
+                 res += xi * 0x0004a1c37bd9f85fd9c6c780000000000000000000; // sub x^(24-1) * (34! * 24^(24-1) / 24!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 787
+    Result: Lived
+    Original line:
+                 res += xi * 0x0000b6ca8268b9d810fedf6695ef2f8a6c00000000; // add x^(22-1) * (34! * 22^(22-1) / 22!)
+
+    Mutated line:
+                 res -= xi * 0x0000b6ca8268b9d810fedf6695ef2f8a6c00000000; // add x^(22-1) * (34! * 22^(22-1) / 22!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/SanctionToken.sol
+    Line nr: 16
+    Result: Error
+    Original line:
+             constructor(uint256 _initialSupply) ERC20("SanctionToken", "ST") Ownable(msg.sender) {
+
+    Mutated line:
+             constructor(uint256 _initialSupply) ERC20("SanctionToken", "ST")  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/GodModeToken.sol
+    Line nr: 38
+    Result: Lived
+    Original line:
+                 _mint(_to, _amount);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 398
+    Result: Lived
+    Original line:
+                 res += xi * 0x3442c4e6074a82f1797f72ac0000000; // add x^02 * (33! / 02!)
+
+    Mutated line:
+                 res += xi / 0x3442c4e6074a82f1797f72ac0000000; // add x^02 * (33! / 02!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 645
+    Result: Lived
+    Original line:
+                 uint256 res = (FIXED_1 - _x) * 0xde1bc4d19efcac82445da75b00000000; // x^(1-1) * (34! * 1^(1-1) / 1!) - x^(2-1) * (34! * 2^(2-1) / 2!)
+
+    Mutated line:
+                 uint256 res = (FIXED_1 + _x) * 0xde1bc4d19efcac82445da75b00000000; // x^(1-1) * (34! * 1^(1-1) / 1!) - x^(2-1) * (34! * 2^(2-1) / 2!)
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 346
+    Result: Lived
+    Original line:
+                 if (_n < 256) {
+
+    Mutated line:
+                 if (_n <= 256) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 66
+    Result: Killed
+    Original line:
+                 require(msg.value == MINT_PRICE, "Incorrect payment amount");
+
+    Mutated line:
+                 require(msg.value != MINT_PRICE, "Incorrect payment amount");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/BancorBondingCurve.sol
+    Line nr: 127
+    Result: Killed
+    Original line:
+                 if (_sellAmount == 0) {
+
+    Mutated line:
+                 if (_sellAmount != 0) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 417
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) >> _precision;
+
+    Mutated line:
+                 xi = (xi * _x) << _precision;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapFactory.sol
+    Line nr: 39
+    Result: Error
+    Original line:
+                 require(getPair[pairKey] == address(0), "UniswapFactory: Pair already exists in contract");
+
+    Mutated line:
+                 require(getPair[pairKey] == adFactory: Pair already exists in contract");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/GodModeToken.sol
+    Line nr: 37
+    Result: Lived
+    Original line:
+                 require(_amount > 0, "Cannot mint zero tokens");
+
+    Mutated line:
+                 require(_amount >= 0, "Cannot mint zero tokens");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 84
+    Result: Lived
+    Original line:
+                 _update(IERC20(token0).balanceOf(address(this)), IERC20(token1).balanceOf(address(this)), reserve0, reserve1);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 634
+    Result: Lived
+    Original line:
+                 if (_x <= LAMBERT_CONV_RADIUS) return lambertNeg1(_x);
+
+    Mutated line:
+                 if (_x > LAMBERT_CONV_RADIUS) return lambertNeg1(_x);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week1/Power.sol
+    Line nr: 693
+    Result: Lived
+    Original line:
+                 xi = (xi * _x) / FIXED_1;
+
+    Mutated line:
+                 xi = (xi * _x) * FIXED_1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 251
+    Result: Lived
+    Original line:
+                 require(amountIn > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+
+    Mutated line:
+                 require(amountIn >= 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+
+

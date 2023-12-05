@@ -43,4 +43,20 @@ contract GodModeTokenTest is Test {
         assertEq(godToken.balanceOf(user1), 50000e18);
         assertEq(godToken.balanceOf(user2), 150000e18);
     }
+
+    function testMint() public {
+        godToken.mint(user1, 100000e18);
+        assertEq(godToken.balanceOf(user1), 200000e18);
+
+        vm.expectRevert("Cannot mint zero tokens");
+        godToken.mint(user1, 0);
+    }
+
+    function testBurn() public {
+        godToken.burn(user1, 100000e18);
+        assertEq(godToken.balanceOf(user1), 0);
+
+        vm.expectRevert("Cannot burn zero tokens");
+        godToken.burn(user1, 0);
+    }
 }

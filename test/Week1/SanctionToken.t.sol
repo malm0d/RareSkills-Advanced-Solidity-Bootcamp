@@ -25,6 +25,15 @@ contract SanctionTokenTest is Test {
         assertEq(sanctionToken.balanceOf(user2), 100000);
     }
 
+    function testOwner() public {
+        assertEq(sanctionToken.owner(), owner);
+        vm.startPrank(user1);
+        vm.expectRevert();
+        sanctionToken.banAddress(owner);
+        vm.expectRevert();
+        sanctionToken.unbanAddress(owner);
+    }
+
     function testSanctionSender() public {
         sanctionToken.banAddress(user1);
         vm.expectRevert("Sender is sanctioned");
