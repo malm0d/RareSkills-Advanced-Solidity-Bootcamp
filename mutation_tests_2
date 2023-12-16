@@ -1,0 +1,357 @@
+Mutation testing report:
+Number of mutations:    32
+Killed:                 16 / 32
+
+Mutations:
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 157
+    Result: Lived
+    Original line:
+             function unpause() external whenPaused onlyOwner {
+
+    Mutated line:
+             function unpause() external  onlyOwner {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/CTFs/Attack1.sol
+    Line nr: 18
+    Result: Lived
+    Original line:
+                 if (overmint1.balanceOf(address(this)) < 5) {
+
+    Mutated line:
+                 if (overmint1.balanceOf(address(this)) <= 5) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 144
+    Result: Killed
+    Original line:
+                 require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
+
+    Mutated line:
+                 require(!(block.timestamp + getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 558
+    Result: Killed
+    Original line:
+                 uint256 denominator = (reserveIn * 1000) + amountInWithFee;
+
+    Mutated line:
+                 uint256 denominator = (reserveIn / 1000) + amountInWithFee;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 15
+    Result: Lived
+    Original line:
+             function updateStakingContract(address _stakingContractAddress) external onlyOwner {
+
+    Mutated line:
+             function updateStakingContract(address _stakingContractAddress) external  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 493
+    Result: Lived
+    Original line:
+                             uint256 numerator = totalSupply() * (rootK - rootKLast);
+
+    Mutated line:
+                             uint256 numerator = totalSupply() / (rootK - rootKLast);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 406
+    Result: Lived
+    Original line:
+                 require(amount0Out > 0 || amount1Out > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+
+    Mutated line:
+                 require(amount0Out >= 0 || amount1Out > 0, "UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 427
+    Result: Lived
+    Original line:
+                 require(amount0In > 0 || amount1In > 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+
+    Mutated line:
+                 require(amount0In > 0 || amount1In >= 0, "UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapFactory.sol
+    Line nr: 33
+    Result: Killed
+    Original line:
+                 require(tokenA != tokenB, "UniswapFactory: Cannot create pair with same token");
+
+    Mutated line:
+                 require(tokenA == tokenB, "UniswapFactory: Cannot create pair with same token");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/CTFs/Attack2.sol
+    Line nr: 13
+    Result: Killed
+    Original line:
+                 for (uint256 i = 0; i < 5; i++) {
+
+    Mutated line:
+                 for (uint256 i = 0; i >= 5; i++) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem2/IsPrimeOnSteroids.sol
+    Line nr: 57
+    Result: Killed
+    Original line:
+                 if (n < 4) {
+
+    Mutated line:
+                 if (n >= 4) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 429
+    Result: Lived
+    Original line:
+                 uint256 balance0Adjusted = (balance0 * BASE) - (amount0In * SWAP_FEES);
+
+    Mutated line:
+                 uint256 balance0Adjusted = (balance0 * BASE) + (amount0In * SWAP_FEES);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 408
+    Result: Killed
+    Original line:
+                 require(amount0Out < _reserve0 && amount1Out < _reserve1, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+
+    Mutated line:
+                 require(amount0Out < _reserve0 && amount1Out >= _reserve1, "UniswapPair: INSUFFICIENT_LIQUIDITY");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 496
+    Result: Lived
+    Original line:
+                             if (liquidity > 0) {
+
+    Mutated line:
+                             if (liquidity <= 0) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 266
+    Result: Killed
+    Original line:
+                     (tokenIn == _token0) ? (uint256(0), amountOutAdjusted) : (amountOutAdjusted, uint256(0));
+
+    Mutated line:
+                     (tokenIn != _token0) ? (uint256(0), amountOutAdjusted) : (amountOutAdjusted, uint256(0));
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 430
+    Result: Lived
+    Original line:
+                 uint256 balance1Adjusted = (balance1 * BASE) - (amount1In * SWAP_FEES);
+
+    Mutated line:
+                 uint256 balance1Adjusted = (balance1 * BASE) + (amount1In * SWAP_FEES);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 590
+    Result: Killed
+    Original line:
+                 return tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+
+    Mutated line:
+                 return tokenA >= tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 122
+    Result: Lived
+    Original line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) < interval)) {
+
+    Mutated line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) <= interval)) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 186
+    Result: Killed
+    Original line:
+                 require(_token0Arg != address(0) && _token1Arg != address(0), "UniswapPair: ZERO_ADDRESS");
+
+    Mutated line:
+                 require(_token0Arg != address(0) && _token1Arg == address(0), "UniswapPair: ZERO_ADDRESS");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 380
+    Result: Lived
+    Original line:
+                 uint256 reserveAmount = (tokenToLoan == token0) ? reserve0 : reserve1;
+
+    Mutated line:
+                 uint256 reserveAmount = (tokenToLoan != token0) ? reserve0 : reserve1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 60
+    Result: Lived
+    Original line:
+                 (address receiver, uint256 royaltyAmount) = royaltyInfo(mintedTokenId, MINT_PRICE / DISCOUNT_FACTOR);
+
+    Mutated line:
+                 (address receiver, uint256 royaltyAmount) = royaltyInfo(mintedTokenId, MINT_PRICE * DISCOUNT_FACTOR);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 379
+    Result: Killed
+    Original line:
+                 require(tokenToLoan == token0 || tokenToLoan == token1, "UniswapPair: token must be either token0 or token1");
+
+    Mutated line:
+                 require(tokenToLoan == token0 || tokenToLoan != token1, "UniswapPair: token must be either token0 or token1");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 381
+    Result: Lived
+    Original line:
+                 if (reserveAmount > MINIMUM_LIQUIDITY) {
+
+    Mutated line:
+                 if (reserveAmount >= MINIMUM_LIQUIDITY) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 528
+    Result: Killed
+    Original line:
+                         require(amount1Correct >= amount1Min, "UniswapPair: SLIPPAGE_AMOUNT1");
+
+    Mutated line:
+                         require(amount1Correct < amount1Min, "UniswapPair: SLIPPAGE_AMOUNT1");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 532
+    Result: Killed
+    Original line:
+                         require(amount0Correct <= amount0Specified, "UniswapPair: SLIPPAGE_AMOUNT0_SPECIFIED");
+
+    Mutated line:
+                         require(amount0Correct > amount0Specified, "UniswapPair: SLIPPAGE_AMOUNT0_SPECIFIED");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 339
+    Result: Killed
+    Original line:
+                 require(amount <= maxFlashLoan(token), "UniswapPair: amount exceeds maxFlashLoan");
+
+    Mutated line:
+                 require(amount > maxFlashLoan(token), "UniswapPair: amount exceeds maxFlashLoan");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem2/IsPrimeOnSteroids.sol
+    Line nr: 30
+    Result: Killed
+    Original line:
+                 for (uint256 i = 0; i < count; i++) {
+
+    Mutated line:
+                 for (uint256 i = 0; i <= count; i++) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 425
+    Result: Lived
+    Original line:
+                 uint256 amount0In = (balance0 > _reserve0 - amount0Out) ? balance0 - (_reserve0 - amount0Out) : 0;
+
+    Mutated line:
+                 uint256 amount0In = (balance0 <= _reserve0 - amount0Out) ? balance0 - (_reserve0 - amount0Out) : 0;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 433
+    Result: Lived
+    Original line:
+                     (balance0Adjusted * balance1Adjusted) >= (uint256(_reserve0) * _reserve1 * (BASE ** 2)), "UniswapPair: K"
+
+    Mutated line:
+                     (balance0Adjusted * balance1Adjusted) >= (uint256(_reserve0) * _reserve1 / (BASE ** 2)), "UniswapPair: K"
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem2/SomeNftEnumerable.sol
+    Line nr: 21
+    Result: Lived
+    Original line:
+                 require(totalSupply() < MAX_SUPPLY, "All tokens have been minted");
+
+    Mutated line:
+                 require(totalSupply() <= MAX_SUPPLY, "All tokens have been minted");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 589
+    Result: Killed
+    Original line:
+                 require(tokenA != tokenB, "UniswapPair: IDENTICAL_ADDRESSES");
+
+    Mutated line:
+                 require(tokenA == tokenB, "UniswapPair: IDENTICAL_ADDRESSES");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week3-5/Rs_UniswapPair.sol
+    Line nr: 123
+    Result: Killed
+    Original line:
+                     require(amount0 >= amount0Min, "UniswapPair: SLIPPAGE_AMOUNT0");
+
+    Mutated line:
+                     require(amount0 < amount0Min, "UniswapPair: SLIPPAGE_AMOUNT0");
+
+
