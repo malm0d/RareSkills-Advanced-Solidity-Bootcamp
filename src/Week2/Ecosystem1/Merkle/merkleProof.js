@@ -3,6 +3,7 @@
 const StandardMerkleTree = require("@openzeppelin/merkle-tree").StandardMerkleTree;
 const fs = require("fs");
 
+//node src/Week2/Ecosystem1/Merkle/merkleProof.js
 const merkleTree = StandardMerkleTree.load(
     JSON.parse(fs.readFileSync(process.cwd() + "/src/Week2/Ecosystem1/Merkle/merkleTree.json", "utf8"))
 );
@@ -17,7 +18,41 @@ for (const [i, v] of merkleTree.entries()) {
         const proof = merkleTree.getProof(i);
         console.log("Merkle proof:", proof);
         console.log("Value:", v);
-
+    }
+    if (v[0] === "0x0000000000000000000000000000000000000003") {
+        const proof = merkleTree.getProof(i);
+        console.log("Merkle proof:", proof);
+        console.log("Value:", v);
+    }
+    if (v[0] === "0x0000000000000000000000000000000000000004") {
+        const proof = merkleTree.getProof(i);
+        console.log("Merkle proof:", proof);
+        console.log("Value:", v);
+    }
+    if (v[0] === "0x0000000000000000000000000000000000000005") {
+        const proof = merkleTree.getProof(i);
+        console.log("Merkle proof:", proof);
+        console.log("Value:", v);
+    }
+    if (v[0] === "0x0000000000000000000000000000000000000006") {
+        const proof = merkleTree.getProof(i);
+        console.log("Merkle proof:", proof);
+        console.log("Value:", v);
+    }
+    if (v[0] === "0x0000000000000000000000000000000000000007") {
+        const proof = merkleTree.getProof(i);
+        console.log("Merkle proof:", proof);
+        console.log("Value:", v);
+    }
+    if (v[0] === "0x0000000000000000000000000000000000000008") {
+        const proof = merkleTree.getProof(i);
+        console.log("Merkle proof:", proof);
+        console.log("Value:", v);
+    }
+    if (v[0] === "0x0000000000000000000000000000000000000009") {
+        const proof = merkleTree.getProof(i);
+        console.log("Merkle proof:", proof);
+        console.log("Value:", v);
     }
 }
 
