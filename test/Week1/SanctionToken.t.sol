@@ -60,4 +60,18 @@ contract SanctionTokenTest is Test {
         sanctionToken.transfer(user2, 1000);
         assertEq(sanctionToken.balanceOf(user2), 100000);
     }
+
+    function testMint() public {
+        sanctionToken.mint(user1, 1000);
+        assertEq(sanctionToken.balanceOf(user1), 101000);
+        vm.expectRevert("Cannot mint zero tokens");
+        sanctionToken.mint(user1, 0);
+    }
+
+    function testBurn() public {
+        sanctionToken.burn(user1, 1000);
+        assertEq(sanctionToken.balanceOf(user1), 99000);
+        vm.expectRevert("Cannot burn zero tokens");
+        sanctionToken.burn(user1, 0);
+    }
 }

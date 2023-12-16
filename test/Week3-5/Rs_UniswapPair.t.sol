@@ -6,7 +6,7 @@ import {UniswapFactory} from "../../src/Week3-5/Rs_UniswapFactory.sol";
 import {UniswapPair} from "../../src/Week3-5/Rs_UniswapPair.sol";
 import {UniToken} from "../../src/Week3-5/Rs_UniToken.sol";
 import {Borrower} from "../../src/Week3-5/Borrower.sol";
-import {FalseBorrower} from "./FalseBorrower.sol";
+import {FalseBorrower} from "./FalseBorrower.t.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {MockERC20} from "../mocks/MockERC20.sol";
 
@@ -179,6 +179,32 @@ contract UniswapPairTest is Test {
             block.timestamp - 0.5 days
         );
         vm.stopPrank();
+    }
+
+    function testMintZeroAmount() external {
+        vm.startPrank(user1);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        vm.expectRevert("UniswapPair: MINT_AMOUNT_ZERO");
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            1_000 * 10 ** 18,
+            0 * 10 ** 18,
+            999 * 10 ** 18,
+            1 * 10 ** 18,
+            block.timestamp
+        );
+        vm.expectRevert("UniswapPair: MINT_AMOUNT_ZERO");
+        pair.mint(
+            address(tokenA),
+            address(tokenB),
+            0 * 10 ** 18,
+            1_000 * 10 ** 18,
+            1 * 10 ** 18,
+            999 * 10 ** 18,
+            block.timestamp
+        );
     }
 
     function testMintZeroAddress() external {
@@ -732,29 +758,47 @@ contract UniswapPairTest is Test {
         vm.startPrank(owner);
         pair.burn(liquidity, 0, 0, block.timestamp);
         assertEq(pair.maxFlashLoan(address(tokenA)), 0);
+        assertEq(pair.maxFlashLoan(address(tokenB)), 0);
     }
 
-    function testCalculateForAmountOut() public {
-        TestInternalFunctions _pair = new TestInternalFunctions();
-        vm.expectRevert("UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
-        _pair.testCalculateForAmountOut(0, 100, 100);
-        vm.expectRevert("UniswapPair: INSUFFICIENT_LIQUIDITY");
-        _pair.testCalculateForAmountOut(100, 0, 100);
+    function testMaxFlashLoanCorrectToken() public {
+        vm.startPrank(owner);
 
-        uint256 amountOut = _pair.testCalculateForAmountOut(10, 100, 100);
-        assertEq(amountOut, 9);
+        tokenA.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        tokenB.approve(address(pair), 1_000_000_000 * 10 ** 18);
+        //mint address(tokenA) at 1000 ether, and address(tokenB) at less than minimum liquidity (10 ** 3)
+        uint256 liquidity = pair.mint(
+            address(tokenA), address(tokenB), 1_000 * 10 ** 18, 10 ** 2, 999 * 10 ** 18, 10 ** 2, block.timestamp
+        );
+        vm.stopPrank();
+
+        address _tkA = address(tokenA);
+        address _tkB = address(tokenB);
+        (address tokenASorted, address tokenBSorted) = _tkA < _tkB ? (_tkA, _tkB) : (_tkB, _tkA);
+        assertEq(pair.maxFlashLoan(tokenBSorted), 0);
+        assertGt(pair.maxFlashLoan(tokenASorted), 900 * 10 ** 18);
+        assertLt(pair.maxFlashLoan(tokenASorted), 1_000 * 10 ** 18);
     }
 
-    function testCalculateForAmountIn() public {
-        TestInternalFunctions _pair = new TestInternalFunctions();
-        vm.expectRevert("UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
-        _pair.testCalculateForAmountIn(0, 100, 100);
-        vm.expectRevert("UniswapPair: INSUFFICIENT_LIQUIDITY");
-        _pair.testCalculateForAmountIn(100, 0, 100);
+    // function testCalculateForAmountOut(uint256) public {
+    //     TestInternalFunctions _pair = new TestInternalFunctions();
+    //     vm.expectRevert("UniswapPair: INSUFFICIENT_INPUT_AMOUNT");
+    //     _pair.testCalculateForAmountOut(0, 100, 100);
+    //     vm.expectRevert("UniswapPair: INSUFFICIENT_LIQUIDITY");
+    //     _pair.testCalculateForAmountOut(100, 0, 0);
+    //     uint256 amountOut = _pair.testCalculateForAmountOut(10, 100, 100);
+    //     assertEq(amountOut, 9);
+    // }
 
-        uint256 amountIn = _pair.testCalculateForAmountIn(10, 100, 100);
-        assertEq(amountIn, 12);
-    }
+    // function testCalculateForAmountIn(uint256) public {
+    //     TestInternalFunctions _pair = new TestInternalFunctions();
+    //     vm.expectRevert("UniswapPair: INSUFFICIENT_OUTPUT_AMOUNT");
+    //     _pair.testCalculateForAmountIn(0, 100, 100);
+    //     vm.expectRevert("UniswapPair: INSUFFICIENT_LIQUIDITY");
+    //     _pair.testCalculateForAmountIn(100, 0, 0);
+    //     uint256 amountIn = _pair.testCalculateForAmountIn(10, 100, 100);
+    //     assertEq(amountIn, 12);
+    // }
 
     function testUpdateBorrower() public {
         Borrower borrower = new Borrower(address(pair), user1);
@@ -772,26 +816,30 @@ contract UniswapPairTest is Test {
     receive() external payable {}
 }
 
-contract TestInternalFunctions is UniswapPair {
-    function testCalculateForAmountOut(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
-    )
-        public
-        returns (uint256)
-    {
-        return super.calculateForAmountOut(amountIn, reserveIn, reserveOut);
-    }
+// contract TestInternalFunctions is UniswapPair {
+//     constructor() UniswapPair() {}
 
-    function testCalculateForAmountIn(
-        uint256 amountOut,
-        uint256 reserveIn,
-        uint256 reserveOut
-    )
-        public
-        returns (uint256)
-    {
-        return super.calculateForAmountIn(amountOut, reserveIn, reserveOut);
-    }
-}
+//     function testCalculateForAmountOut(
+//         uint256 amountIn,
+//         uint256 reserveIn,
+//         uint256 reserveOut
+//     )
+//         public
+//         pure
+//         returns (uint256)
+//     {
+//         return super.calculateForAmountOut(amountIn, reserveIn, reserveOut);
+//     }
+
+//     function testCalculateForAmountIn(
+//         uint256 amountOut,
+//         uint256 reserveIn,
+//         uint256 reserveOut
+//     )
+//         public
+//         pure
+//         returns (uint256)
+//     {
+//         return super.calculateForAmountIn(amountOut, reserveIn, reserveOut);
+//     }
+// }

@@ -59,4 +59,13 @@ contract GodModeTokenTest is Test {
         vm.expectRevert("Cannot burn zero tokens");
         godToken.burn(user1, 0);
     }
+
+    function testChangeIluvatar() public {
+        vm.startPrank(user1);
+        vm.expectRevert();
+        godToken.replaceIluvatar(user1);
+        vm.stopPrank();
+        vm.expectRevert("GodToken: iluvatar cannot be the zero address");
+        godToken.replaceIluvatar(address(0));
+    }
 }

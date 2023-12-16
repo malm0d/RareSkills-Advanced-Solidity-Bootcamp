@@ -8,12 +8,14 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
 //forge test --match-contract SomeNFTTest -vvvv
 contract SomeNFTTest is Test {
     SomeNFT someNFT;
+    //SomeNFTEnumerable enumerableContract;
     address owner;
     address royaltyReceiver;
     address userWithDiscount1;
     address userWithDiscount2;
     address normalUser;
     bytes32 merkleRoot = 0xa297e088bf87eea455a2cbb55853136013d1f0c222822827516f97639984ec19;
+    uint256 MAX_SUPPLY;
 
     function setUp() public {
         owner = address(this);
@@ -22,6 +24,7 @@ contract SomeNFTTest is Test {
         userWithDiscount2 = 0x0000000000000000000000000000000000000002;
         normalUser = address(0x100);
         someNFT = new SomeNFT(merkleRoot, royaltyReceiver);
+        MAX_SUPPLY = someNFT.MAX_SUPPLY();
     }
 
     function testRoyaltyZeroAddress() public {
@@ -29,42 +32,12 @@ contract SomeNFTTest is Test {
         new SomeNFT(merkleRoot, address(0));
     }
 
-    function testWithdrawFunds() public {
-        vm.startPrank(normalUser);
-        vm.deal(normalUser, 5000000 ether);
-        someNFT.mint{value: 1 ether}();
-        vm.stopPrank();
-
-        vm.startPrank(owner);
-        uint256 balanceBefore = address(owner).balance;
-        someNFT.withdrawFunds();
-        uint256 balanceAfter = address(owner).balance;
-        assertGt(balanceAfter, balanceBefore);
-    }
-
-    function testWithdrawFundsFail() public {
-        vm.startPrank(normalUser);
-        vm.deal(normalUser, 5000000 ether);
-        someNFT.mint{value: 1 ether}();
-        vm.expectRevert();
-        someNFT.withdrawFunds();
-    }
-
-    function testWithdrawLowLevelCallFail() public {
-        vm.startPrank(normalUser);
-        vm.deal(normalUser, 5000000 ether);
-        someNFT.mint{value: 1 ether}();
-        vm.stopPrank();
-
-        RejectingReceiver rejectingReceiver = new RejectingReceiver();
-        vm.startPrank(address(this));
-        someNFT.transferOwnership(address(rejectingReceiver));
-        vm.stopPrank();
-
-        vm.startPrank(address(rejectingReceiver));
-        someNFT.acceptOwnership();
-        vm.expectRevert("Withdrawal failed");
-        someNFT.withdrawFunds();
+    function testNameAndSymbol() public {
+        SomeNFT _someNFT = new SomeNFT(merkleRoot, royaltyReceiver);
+        assertEq(_someNFT.name(), "SomeNFT");
+        assertEq(_someNFT.symbol(), "SOME");
+        assertEq(_someNFT.owner(), owner);
+        assertEq(_someNFT.merkleRoot(), merkleRoot);
     }
 
     function testMintWithDiscount() public {
@@ -129,6 +102,24 @@ contract SomeNFTTest is Test {
         vm.stopPrank();
     }
 
+    function testMintWithDiscountRoyaltyAmount() public {
+        uint256 royaltiesReceiverBalanceBefore = address(royaltyReceiver).balance;
+
+        vm.startPrank(userWithDiscount1);
+        bytes32[] memory proofUser1 = new bytes32[](3);
+        proofUser1[0] = 0x50bca9edd621e0f97582fa25f616d475cabe2fd783c8117900e5fed83ec22a7c;
+        proofUser1[1] = 0x63340ab877f112a2b7ccdbf0eb0f6d9f757ab36ecf6f6e660df145bcdfb67a19;
+        proofUser1[2] = 0x4faf7b0021ef54912575fc1dca53650228f33fe7ae7f3bf151ce2b9faa8e6ffd;
+        vm.deal(userWithDiscount1, 1 ether);
+        someNFT.mintWithDiscount{value: 0.5 ether}(proofUser1, 0);
+        vm.stopPrank();
+
+        uint256 royaltiesreceiverBalanceAfter = address(royaltyReceiver).balance;
+
+        assertGt(royaltiesreceiverBalanceAfter, royaltiesReceiverBalanceBefore);
+        assertEq(royaltiesreceiverBalanceAfter, (0.5 ether * 250) / 10000);
+    }
+
     function testMintWithDiscountFailsOnRoyaltyPayment() public {
         RejectingReceiver rejectingReceiver = new RejectingReceiver();
         SomeNFT someNFT_testContract = new SomeNFT(merkleRoot, address(rejectingReceiver));
@@ -141,6 +132,34 @@ contract SomeNFTTest is Test {
         vm.deal(userWithDiscount1, 1 ether);
         vm.expectRevert("Royalties payment failed");
         someNFT_testContract.mintWithDiscount{value: 0.5 ether}(proofUser1, 0);
+    }
+
+    function testMintWithDiscountOutOfSupply() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5000000 ether);
+        for (uint256 i = 0; i < MAX_SUPPLY - 1; i++) {
+            someNFT.mint{value: 1 ether}();
+        }
+        vm.stopPrank();
+
+        vm.startPrank(userWithDiscount1);
+        bytes32[] memory proofUser1 = new bytes32[](3);
+        proofUser1[0] = 0x50bca9edd621e0f97582fa25f616d475cabe2fd783c8117900e5fed83ec22a7c;
+        proofUser1[1] = 0x63340ab877f112a2b7ccdbf0eb0f6d9f757ab36ecf6f6e660df145bcdfb67a19;
+        proofUser1[2] = 0x4faf7b0021ef54912575fc1dca53650228f33fe7ae7f3bf151ce2b9faa8e6ffd;
+        vm.deal(userWithDiscount1, 1 ether);
+        someNFT.mintWithDiscount{value: 0.5 ether}(proofUser1, 0);
+        assertEq(someNFT.balanceOf(userWithDiscount1), 1);
+
+        vm.startPrank(userWithDiscount2);
+        bytes32[] memory proofUser2 = new bytes32[](3);
+        proofUser2[0] = 0x5fa3dab1e0e1070445c119c6fd10edd16d6aa2f25a5899217f919c041d474318;
+        proofUser2[1] = 0x895c5cff012220658437b539cdf2ce853576fc0a881d814e6c7da6b20e9b8d8d;
+        proofUser2[2] = 0x4faf7b0021ef54912575fc1dca53650228f33fe7ae7f3bf151ce2b9faa8e6ffd;
+        vm.deal(userWithDiscount2, 1 ether);
+        vm.expectRevert("All tokens have been minted");
+        someNFT.mintWithDiscount{value: 0.5 ether}(proofUser2, 1);
+        assertEq(someNFT.balanceOf(userWithDiscount2), 0);
     }
 
     function testMint() public {
@@ -160,7 +179,7 @@ contract SomeNFTTest is Test {
     function testMintOutOfSupply() public {
         vm.startPrank(normalUser);
         vm.deal(normalUser, 5000000 ether);
-        for (uint256 i = 0; i < 1000; i++) {
+        for (uint256 i = 0; i < MAX_SUPPLY; i++) {
             someNFT.mint{value: 1 ether}();
         }
         vm.expectRevert("All tokens have been minted");
@@ -178,7 +197,7 @@ contract SomeNFTTest is Test {
         someNFT_testContract.mint{value: 1 ether}();
     }
 
-    function testRoyalties() public {
+    function tesMinttRoyaltiesAmount() public {
         uint256 balanceBefore = address(royaltyReceiver).balance;
 
         vm.startPrank(normalUser);
@@ -191,6 +210,44 @@ contract SomeNFTTest is Test {
         assertGt(balanceAfter, balanceBefore);
     }
 
+    function testWithdrawFunds() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5000000 ether);
+        someNFT.mint{value: 1 ether}();
+        vm.stopPrank();
+
+        vm.startPrank(owner);
+        uint256 balanceBefore = address(owner).balance;
+        someNFT.withdrawFunds();
+        uint256 balanceAfter = address(owner).balance;
+        assertGt(balanceAfter, balanceBefore);
+    }
+
+    function testWithdrawFundsFail() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5000000 ether);
+        someNFT.mint{value: 1 ether}();
+        vm.expectRevert();
+        someNFT.withdrawFunds();
+    }
+
+    function testWithdrawLowLevelCallFail() public {
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 5000000 ether);
+        someNFT.mint{value: 1 ether}();
+        vm.stopPrank();
+
+        RejectingReceiver rejectingReceiver = new RejectingReceiver();
+        vm.startPrank(address(this));
+        someNFT.transferOwnership(address(rejectingReceiver));
+        vm.stopPrank();
+
+        vm.startPrank(address(rejectingReceiver));
+        someNFT.acceptOwnership();
+        vm.expectRevert("Withdrawal failed");
+        someNFT.withdrawFunds();
+    }
+
     function testSupportsInterface() public {
         //interface Id for ERC721 is 0x80ac58cd
         //interface Id for ERC2981 is 0x2a55205a
@@ -199,10 +256,10 @@ contract SomeNFTTest is Test {
         assertEq(someNFT.supportsInterface(0x780e9d63), false);
     }
 
-    function testReentrancyGuard() public {
+    function testReentrancyGuardMint() public {
         MaliciousContract maliciousContract = new MaliciousContract(address(someNFT));
         vm.deal(address(maliciousContract), 10 ether);
-        vm.expectRevert();
+        vm.expectRevert(bytes4(keccak256(bytes("ReentrancyGuardReentrantCall()"))));
         maliciousContract.mintNFTAttack();
     }
 
