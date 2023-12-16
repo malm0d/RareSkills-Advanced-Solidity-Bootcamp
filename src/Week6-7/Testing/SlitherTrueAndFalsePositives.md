@@ -30,6 +30,8 @@
         return true;
     }
 ```
+This was a red issue (the only red issue related to non-library contracts) in Slither.
+
 The warning here is regarding the use of an arbitray `from` address: `receiver` in `SafeTransferLib.safeTransferFrom(token, address(receiver), address(this), amount + fee)`. The `receiver` is the address that receives the flash loan and is expected to pay the loan back with fees in the same atomic transaction. Slither highlights this because the `receiver` can be any address,  and it has control and can potentially manipulate the transaction.
 
 As the `receiver` can potentially be any borrower contract that implements `IERC3156FlashBorrower` and simply returns `keccak256("ERC3156FlashBorrower.onFlashLoan")`, there is a risk that a malicious borrower contract can simply implement this in an attempt to re-enter the Uniswap pair contract. This can happen before the return statement is executed in the `receiver`. The malicious borrower contract could also have a `fallback` or `receive` function designed to call back into the pair contract. To mitigate this, we can implement checks to ensure that the `receiver` is a trusted contract address.
