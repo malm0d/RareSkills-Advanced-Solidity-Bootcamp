@@ -185,6 +185,7 @@ contract UniswapPair is UniToken, IERC3156FlashLender, ReentrancyGuard {
         returns (uint256)
     {
         require(_token0Arg != address(0) && _token1Arg != address(0), "UniswapPair: ZERO_ADDRESS");
+        require(amount0Specified > 0 && amount1Specified > 0, "UniswapPair: MINT_AMOUNT_ZERO");
         (address _token0, address _token1) = _checkTokens(_token0Arg, _token1Arg);
 
         //Calculate correct amount of tokens to transfer from liquidity provider to maintain pool ratio.
