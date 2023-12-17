@@ -71,7 +71,7 @@ Function:
         emit MintRewards(msg.sender, MINT_AMOUNT);
     }
 ```
-The `claimRewards` function makes an external call to the `rewardTokenContract` which is a trusted contract. To test for reentrancy through this function, a malicious reward token can be used to try to reenter this function. This mutation was picked up because as there was no test in `test/Week2/Staking.t.sol` to test for the reentrancy. I did try to create a malicious contract to call `claimRewards` twice in a single call, but the function's check for `require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours")` ensures that a user can only claim once every 24 hours.
+The `claimRewards` function makes an external call to the `rewardTokenContract` which is a trusted contract. In order to test for reentrancy through this function, a malicious reward token can be used to try to reenter this function, however I did not attempt this because I assumed that if the reward token is a trusted contract then there is no reason to test for reentrancy. This mutation was picked up because as there was no test in `test/Week2/Staking.t.sol` to test for the reentrancy. I did try to create a malicious contract to call `claimRewards` twice in a single call, but the function's check for `require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours")` ensures that a user can only claim once every 24 hours.
 
 ### 3.
 ```
