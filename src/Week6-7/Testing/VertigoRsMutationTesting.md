@@ -217,7 +217,7 @@ Mutation:
              constructor(address _someNFT, address _rewardToken)  {
 ```
 
-For the above 4 errors, I'm not sure why these are occuring, as I had written tests to enforce their values. It could be the way that I'm testing them thats causing the error but I'm not sure.
+For the above 5 errors, I'm not sure why these are occuring, as I had written tests to enforce their values. It could be the way that I'm testing them thats causing the error but I'm not sure.
 ```
     //SomeNft.t.sol
     function testNameAndSymbol() public {
