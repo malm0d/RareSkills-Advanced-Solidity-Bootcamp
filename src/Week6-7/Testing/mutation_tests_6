@@ -1,0 +1,632 @@
+Mutation testing report:
+Number of mutations:    57
+Killed:                 46 / 57
+
+Mutations:
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 45
+    Result: Killed
+    Original line:
+                 require(msg.value == MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
+
+    Mutated line:
+                 require(msg.value != MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 46
+    Result: Killed
+    Original line:
+                 require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
+
+    Mutated line:
+                 require(currentSupply <= MAX_SUPPLY, "All tokens have been minted");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 66
+    Result: Killed
+    Original line:
+                 require(msg.value == MINT_PRICE, "Incorrect payment amount");
+
+    Mutated line:
+                 require(msg.value != MINT_PRICE, "Incorrect payment amount");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 67
+    Result: Killed
+    Original line:
+                 require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
+
+    Mutated line:
+                 require(currentSupply <= MAX_SUPPLY, "All tokens have been minted");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 29
+    Result: Killed
+    Original line:
+                 require(_royaltyReceiver != address(0), "Cannot be the zero address");
+
+    Mutated line:
+                 require(_royaltyReceiver == address(0), "Cannot be the zero address");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 45
+    Result: Killed
+    Original line:
+                 require(msg.value == MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
+
+    Mutated line:
+                 require(msg.value != MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 46
+    Result: Killed
+    Original line:
+                 require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
+
+    Mutated line:
+                 require(currentSupply >= MAX_SUPPLY, "All tokens have been minted");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 66
+    Result: Killed
+    Original line:
+                 require(msg.value == MINT_PRICE, "Incorrect payment amount");
+
+    Mutated line:
+                 require(msg.value != MINT_PRICE, "Incorrect payment amount");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 67
+    Result: Killed
+    Original line:
+                 require(currentSupply < MAX_SUPPLY, "All tokens have been minted");
+
+    Mutated line:
+                 require(currentSupply >= MAX_SUPPLY, "All tokens have been minted");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 45
+    Result: Killed
+    Original line:
+                 require(msg.value == MINT_PRICE / DISCOUNT_FACTOR, "Incorrect payment amount");
+
+    Mutated line:
+                 require(msg.value == MINT_PRICE * DISCOUNT_FACTOR, "Incorrect payment amount");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 60
+    Result: Killed
+    Original line:
+                 (address receiver, uint256 royaltyAmount) = royaltyInfo(mintedTokenId, MINT_PRICE / DISCOUNT_FACTOR);
+
+    Mutated line:
+                 (address receiver, uint256 royaltyAmount) = royaltyInfo(mintedTokenId, MINT_PRICE * DISCOUNT_FACTOR);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 31
+    Result: Killed
+    Original line:
+                 _setDefaultRoyalty(_royaltyReceiver, ROYALTY_FRACTION);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 48
+    Result: Killed
+    Original line:
+                 _verifyMerkleProof(_proof, msg.sender, _index);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 57
+    Result: Killed
+    Original line:
+                 _safeMint(msg.sender, mintedTokenId);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 75
+    Result: Killed
+    Original line:
+                 _safeMint(msg.sender, mintedTokenId);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 28
+    Result: Error
+    Original line:
+             constructor(bytes32 _merkleRoot, address _royaltyReceiver) ERC721("SomeNFT", "SOME") Ownable(msg.sender) {
+
+    Mutated line:
+             constructor(bytes32 _merkleRoot, address _royaltyReceiver)  Ownable(msg.sender) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 28
+    Result: Error
+    Original line:
+             constructor(bytes32 _merkleRoot, address _royaltyReceiver) ERC721("SomeNFT", "SOME") Ownable(msg.sender) {
+
+    Mutated line:
+             constructor(bytes32 _merkleRoot, address _royaltyReceiver) ERC721("SomeNFT", "SOME")  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 34
+    Result: Killed
+    Original line:
+             function withdrawFunds() external onlyOwner {
+
+    Mutated line:
+             function withdrawFunds() external  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 44
+    Result: Lived
+    Original line:
+             function mintWithDiscount(bytes32[] calldata _proof, uint256 _index) external payable nonReentrant {
+
+    Mutated line:
+             function mintWithDiscount(bytes32[] calldata _proof, uint256 _index) external payable  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/SomeNFT.sol
+    Line nr: 65
+    Result: Killed
+    Original line:
+             function mint() external payable nonReentrant {
+
+    Mutated line:
+             function mint() external payable  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 21
+    Result: Killed
+    Original line:
+                 require(msg.sender == stakingContract, "Only staking contract can mint rewards");
+
+    Mutated line:
+                 require(msg.sender != stakingContract, "Only staking contract can mint rewards");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 16
+    Result: Killed
+    Original line:
+                 require(_stakingContractAddress != address(0), "Cannot be the zero address");
+
+    Mutated line:
+                 require(_stakingContractAddress == address(0), "Cannot be the zero address");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 21
+    Result: Killed
+    Original line:
+                 require(msg.sender == stakingContract, "Only staking contract can mint rewards");
+
+    Mutated line:
+                 require(msg.sender != stakingContract, "Only staking contract can mint rewards");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 22
+    Result: Killed
+    Original line:
+                 _mint(_to, _amount);
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 13
+    Result: Error
+    Original line:
+             constructor() ERC20("RewardToken", "RT") Ownable(msg.sender) {}
+
+    Mutated line:
+             constructor()  Ownable(msg.sender) {}
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 13
+    Result: Error
+    Original line:
+             constructor() ERC20("RewardToken", "RT") Ownable(msg.sender) {}
+
+    Mutated line:
+             constructor() ERC20("RewardToken", "RT")  {}
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/RewardToken.sol
+    Line nr: 15
+    Result: Killed
+    Original line:
+             function updateStakingContract(address _stakingContractAddress) external onlyOwner {
+
+    Mutated line:
+             function updateStakingContract(address _stakingContractAddress) external  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 83
+    Result: Killed
+    Original line:
+                 require(msg.sender == address(someNFTContract), "Caller is not the ERC721 contract");
+
+    Mutated line:
+                 require(msg.sender != address(someNFTContract), "Caller is not the ERC721 contract");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 120
+    Result: Killed
+    Original line:
+                 require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can withdraw");
+
+    Mutated line:
+                 require(msg.sender != getOriginalOwner(_tokenId), "Only the original owner can withdraw");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 122
+    Result: Killed
+    Original line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) < interval)) {
+
+    Mutated line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) <= interval)) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 142
+    Result: Killed
+    Original line:
+                 require(getClaimTime(_tokenId) > 0, "This token ID is not staked");
+
+    Mutated line:
+                 require(getClaimTime(_tokenId) >= 0, "This token ID is not staked");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 143
+    Result: Killed
+    Original line:
+                 require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can claim rewards for this token ID");
+
+    Mutated line:
+                 require(msg.sender != getOriginalOwner(_tokenId), "Only the original owner can claim rewards for this token ID");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 144
+    Result: Killed
+    Original line:
+                 require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
+
+    Mutated line:
+                 require(!(block.timestamp - getClaimTime(_tokenId) <= interval), "Can only claim after every 24 hours");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 83
+    Result: Killed
+    Original line:
+                 require(msg.sender == address(someNFTContract), "Caller is not the ERC721 contract");
+
+    Mutated line:
+                 require(msg.sender != address(someNFTContract), "Caller is not the ERC721 contract");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 120
+    Result: Killed
+    Original line:
+                 require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can withdraw");
+
+    Mutated line:
+                 require(msg.sender != getOriginalOwner(_tokenId), "Only the original owner can withdraw");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 122
+    Result: Killed
+    Original line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) < interval)) {
+
+    Mutated line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) >= interval)) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 142
+    Result: Killed
+    Original line:
+                 require(getClaimTime(_tokenId) > 0, "This token ID is not staked");
+
+    Mutated line:
+                 require(getClaimTime(_tokenId) <= 0, "This token ID is not staked");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 143
+    Result: Killed
+    Original line:
+                 require(msg.sender == getOriginalOwner(_tokenId), "Only the original owner can claim rewards for this token ID");
+
+    Mutated line:
+                 require(msg.sender != getOriginalOwner(_tokenId), "Only the original owner can claim rewards for this token ID");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 144
+    Result: Killed
+    Original line:
+                 require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
+
+    Mutated line:
+                 require(!(block.timestamp - getClaimTime(_tokenId) >= interval), "Can only claim after every 24 hours");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 35
+    Result: Killed
+    Original line:
+             uint256 private constant _BITMASK_ADDRESS = (1 << 160) - 1;
+
+    Mutated line:
+             uint256 private constant _BITMASK_ADDRESS = (1 << 160) + 1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 35
+    Result: Error
+    Original line:
+             uint256 private constant _BITMASK_ADDRESS = (1 << 160) - 1;
+
+    Mutated line:
+             uint256 private constant _BITMASK_ADDRESS = (1 >> 160) - 1;
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 45
+    Result: Error
+    Original line:
+             uint256 public constant MINT_AMOUNT = 10 * (10 ** 18); //10 RTs
+
+    Mutated line:
+             uint256 public constant MINT_AMOUNT = 10 / (10 ** 18); //10 RTs
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 122
+    Result: Killed
+    Original line:
+                 if (!(block.timestamp - getClaimTime(_tokenId) < interval)) {
+
+    Mutated line:
+                 if (!(block.timestamp + getClaimTime(_tokenId) < interval)) {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 144
+    Result: Killed
+    Original line:
+                 require(!(block.timestamp - getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
+
+    Mutated line:
+                 require(!(block.timestamp + getClaimTime(_tokenId) < interval), "Can only claim after every 24 hours");
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 162
+    Result: Killed
+    Original line:
+                 address owner = address(uint160(stakingInfo[_tokenId] & _BITMASK_ADDRESS));
+
+    Mutated line:
+                 address owner = address(uint160(stakingInfo[_tokenId] | _BITMASK_ADDRESS));
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 167
+    Result: Killed
+    Original line:
+                 return (stakingInfo[_tokenId] >> _BITPOS_START_TIMESTAMP);
+
+    Mutated line:
+                 return (stakingInfo[_tokenId] << _BITPOS_START_TIMESTAMP);
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 154
+    Result: Killed
+    Original line:
+                 _pause();
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 158
+    Result: Killed
+    Original line:
+                 _unpause();
+
+    Mutated line:
+                 
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 59
+    Result: Error
+    Original line:
+             constructor(address _someNFT, address _rewardToken) Ownable(msg.sender) {
+
+    Mutated line:
+             constructor(address _someNFT, address _rewardToken)  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 119
+    Result: Killed
+    Original line:
+             function withdrawNFT(uint256 _tokenId) external nonReentrant whenNotPaused {
+
+    Mutated line:
+             function withdrawNFT(uint256 _tokenId) external  whenNotPaused {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 119
+    Result: Killed
+    Original line:
+             function withdrawNFT(uint256 _tokenId) external nonReentrant whenNotPaused {
+
+    Mutated line:
+             function withdrawNFT(uint256 _tokenId) external nonReentrant  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 141
+    Result: Lived
+    Original line:
+             function claimRewards(uint256 _tokenId) external nonReentrant whenNotPaused {
+
+    Mutated line:
+             function claimRewards(uint256 _tokenId) external  whenNotPaused {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 141
+    Result: Killed
+    Original line:
+             function claimRewards(uint256 _tokenId) external nonReentrant whenNotPaused {
+
+    Mutated line:
+             function claimRewards(uint256 _tokenId) external nonReentrant  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 153
+    Result: Lived
+    Original line:
+             function pause() external whenNotPaused onlyOwner {
+
+    Mutated line:
+             function pause() external  onlyOwner {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 153
+    Result: Killed
+    Original line:
+             function pause() external whenNotPaused onlyOwner {
+
+    Mutated line:
+             function pause() external whenNotPaused  {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 157
+    Result: Lived
+    Original line:
+             function unpause() external whenPaused onlyOwner {
+
+    Mutated line:
+             function unpause() external  onlyOwner {
+
+
+Mutation:
+    File: /Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week2/Ecosystem1/Staking.sol
+    Line nr: 157
+    Result: Killed
+    Original line:
+             function unpause() external whenPaused onlyOwner {
+
+    Mutated line:
+             function unpause() external whenPaused  {
+
+
