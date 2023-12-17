@@ -116,6 +116,25 @@ contract StakingTest is Test {
         assertEq(owner, originalOwner);
     }
 
+    function testStakeNFTOriginalOwner() public {
+        vm.startPrank(owner);
+        vm.deal(owner, 2 ether);
+        someNFT.mint{value: 1 ether}(); // tokenId = 0
+        someNFT.approve(address(stakingContract), 0);
+        someNFT.safeTransferFrom(owner, address(stakingContract), 0);
+        address token0Owner = stakingContract.getOriginalOwner(0);
+        assertEq(token0Owner, owner);
+
+        vm.startPrank(normalUser);
+        vm.deal(normalUser, 2 ether);
+        someNFT.mint{value: 1 ether}(); // tokenId = 1
+        someNFT.approve(address(stakingContract), 1);
+        someNFT.safeTransferFrom(normalUser, address(stakingContract), 1);
+        address token1Owner = stakingContract.getOriginalOwner(1);
+        assertEq(token1Owner, normalUser);
+        0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff
+    }
+
     //******************Test Withdraw from Staking Contract*******************/
 
     function testWithdrawNFTFail() public {
