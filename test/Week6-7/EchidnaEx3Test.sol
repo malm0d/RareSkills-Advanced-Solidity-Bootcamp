@@ -14,7 +14,7 @@ contract TestToken is MintableToken {
     address echidna = msg.sender;
 
     // TODO: update the constructor
-    constructor() public MintableToken(10_000) {
+    constructor() MintableToken(10_000) {
         owner = echidna;
     }
 

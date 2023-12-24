@@ -11,7 +11,7 @@ import {Token} from "../../src/Week6-7/Fuzzing/Echidna_Ex2.sol";
 
 //echidna ./test/Week6-7/EchidnaEx2Test.sol --contract TestToken
 contract TestToken is Token {
-    constructor() public {
+    constructor() {
         pause(); // pause the contract
         owner = address(0); // lose ownership
     }

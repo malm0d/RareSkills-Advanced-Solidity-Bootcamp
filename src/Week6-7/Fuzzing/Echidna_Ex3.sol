@@ -46,7 +46,7 @@ contract MintableToken is Token {
     uint256 public totalMinted;
     uint256 public totalMintable;
 
-    constructor(uint256 totalMintable_) public {
+    constructor(uint256 totalMintable_) {
         totalMintable = totalMintable_;
     }
 

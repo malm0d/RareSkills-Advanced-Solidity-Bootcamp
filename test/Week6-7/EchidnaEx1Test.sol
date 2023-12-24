@@ -13,7 +13,7 @@ import {Token} from "../../src/Week6-7/Fuzzing/Echidna_Ex1.sol";
 contract TestToken is Token {
     address echidna = tx.origin;
 
-    constructor() public {
+    constructor() {
         balances[echidna] = 10000;
     }
 
