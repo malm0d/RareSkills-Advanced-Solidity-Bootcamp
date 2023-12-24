@@ -132,7 +132,6 @@ contract StakingTest is Test {
         someNFT.safeTransferFrom(normalUser, address(stakingContract), 1);
         address token1Owner = stakingContract.getOriginalOwner(1);
         assertEq(token1Owner, normalUser);
-        0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff
     }
 
     //******************Test Withdraw from Staking Contract*******************/
