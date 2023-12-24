@@ -1,0 +1,89 @@
+/Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/src/Week6-7/Fuzzing/Echidna_Ex4.sol
+  1 |     | // SPDX-License-Identifier: MIT
+  2 |     | pragma solidity ^0.8.0;
+  3 |     | 
+  4 |     | contract Ownable {
+  5 | *   |     address public owner = msg.sender;
+  6 |     | 
+  7 | *   |     function transferOwnership(address newOwner) public onlyOwner {
+  8 | *   |         owner = newOwner;
+  9 |     |     }
+ 10 |     | 
+ 11 |     |     modifier onlyOwner() {
+ 12 | *r  |         require(msg.sender == owner, "Ownable: Caller is not the owner");
+ 13 |     |         _;
+ 14 |     |     }
+ 15 |     | }
+ 16 |     | 
+ 17 |     | contract Pausable is Ownable {
+ 18 |     |     bool private _paused;
+ 19 |     | 
+ 20 | *   |     function paused() public view returns (bool) {
+ 21 | *   |         return _paused;
+ 22 |     |     }
+ 23 |     | 
+ 24 | *   |     function pause() public onlyOwner {
+ 25 | *   |         _paused = true;
+ 26 |     |     }
+ 27 |     | 
+ 28 | *   |     function resume() public onlyOwner {
+ 29 | *   |         _paused = false;
+ 30 |     |     }
+ 31 |     | 
+ 32 |     |     modifier whenNotPaused() {
+ 33 | *   |         require(!_paused, "Pausable: Contract is paused");
+ 34 |     |         _;
+ 35 |     |     }
+ 36 |     | }
+ 37 |     | 
+ 38 |     | contract Token is Ownable, Pausable {
+ 39 | *   |     mapping(address => uint256) public balances;
+ 40 |     | 
+ 41 | *   |     function transfer(address to, uint256 value) public virtual whenNotPaused {
+ 42 | *   |         balances[msg.sender] -= value;
+ 43 | *   |         balances[to] += value;
+ 44 |     |     }
+ 45 |     | }
+ 46 |     | 
+
+/Users/malcolmtan/Projects/RareSkills_Advanced_Solidity/test/Week6-7/EchidnaEx4Test.sol
+  1 |     | // SPDX-License-Identifier: MIT
+  2 |     | pragma solidity ^0.8.0;
+  3 |     | 
+  4 |     | import {Token} from "../../src/Week6-7/Fuzzing/Echidna_Ex4.sol";
+  5 |     | 
+  6 |     | /// @dev Run the template with
+  7 |     | ///      ```
+  8 |     | ///      solc-select use 0.8.0
+  9 |     | ///      echidna program-analysis/echidna/exercises/exercise4/template.sol --contract TestToken --test-mode assertion
+ 10 |     | ///      ```
+ 11 |     | 
+ 12 |     | //echidna ./test/Week6-7/EchidnaEx4Test.sol --test-mode assertion --contract TestToken
+ 13 | *r  | contract TestToken is Token {
+ 14 |     |     event LogBalance(uint256 balanceSender, uint256 balanceReceipient);
+ 15 |     | 
+ 16 | *   |     function transfer(address to, uint256 value) public override {
+ 17 |     |         // TODO: include `assert(condition)` statements that
+ 18 |     |         // detect a breaking invariant on a transfer.
+ 19 |     |         // Hint: you may use the following to wrap the original function.
+ 20 |     |         //super.transfer(to, value);
+ 21 |     | 
+ 22 | *   |         uint256 balanceBeforeSender = balances[msg.sender];
+ 23 | *   |         uint256 balanceBeforeReceipient = balances[to];
+ 24 | *   |         emit LogBalance(balanceBeforeSender, balanceBeforeReceipient);
+ 25 |     | 
+ 26 | *   |         super.transfer(to, value);
+ 27 |     | 
+ 28 | *   |         uint256 balanceAfterSender = balances[msg.sender];
+ 29 | *   |         uint256 balanceAfterReceipient = balances[to];
+ 30 | *   |         emit LogBalance(balanceAfterSender, balanceAfterReceipient);
+ 31 |     | 
+ 32 | *   |         assert(balanceAfterSender <= balanceBeforeSender);
+ 33 | *   |         assert(balanceAfterSender == balanceBeforeSender - value);
+ 34 |     | 
+ 35 | *   |         assert(balanceAfterReceipient >= balanceBeforeReceipient);
+ 36 | *   |         assert(balanceAfterReceipient == balanceBeforeReceipient + value);
+ 37 |     |     }
+ 38 |     | }
+ 39 |     | 
+
