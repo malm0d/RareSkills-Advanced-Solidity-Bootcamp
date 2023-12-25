@@ -26,6 +26,7 @@ contract TokenWhaleChallenge {
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     function _transfer(address to, uint256 value) internal {
+        //added unchecked block to mimic solidity ^0.4.21
         unchecked {
             balanceOf[msg.sender] -= value;
             balanceOf[to] += value;
