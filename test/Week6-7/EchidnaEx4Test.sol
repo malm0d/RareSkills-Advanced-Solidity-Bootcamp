@@ -9,7 +9,7 @@ import {Token} from "../../src/Week6-7/Fuzzing/Echidna_Ex4.sol";
 ///      echidna program-analysis/echidna/exercises/exercise4/template.sol --contract TestToken --test-mode assertion
 ///      ```
 
-//echidna ./test/Week6-7/EchidnaEx4Test.sol --test-mode assertion --contract TestToken
+//echidna ./test/Week6-7/EchidnaEx4Test.sol --test-mode assertion --contract TestToken --corpus-dir corpus
 contract TestToken is Token {
     event LogBalance(uint256 balanceSender, uint256 balanceReceipient);
 
