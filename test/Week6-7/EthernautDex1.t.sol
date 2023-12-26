@@ -32,8 +32,7 @@ contract EthernautDex1Test is Test {
         token2 = new SwappableToken(address(dexContract), "Token2", "TK2", 1_000_000);
 
         dexContract.setTokens(address(token1), address(token2));
-        token1.approve(address(dexContract), 1_000_000);
-        token2.approve(address(dexContract), 1_000_000);
+        dexContract.approve(address(dexContract), 1_000_000);
 
         dexContract.addLiquidity(address(token1), 100);
         dexContract.addLiquidity(address(token2), 100);
