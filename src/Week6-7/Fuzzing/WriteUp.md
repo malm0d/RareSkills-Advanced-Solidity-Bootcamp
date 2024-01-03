@@ -196,7 +196,43 @@ The root of the exploit lies in the `_transfer` function, where the balance of t
 ## Echidna Exercises
 
 ### Exercise 3
-The initial test fails because the `mint` function takes a `uint256` argument, but in the require statement, the function attempts to cast uint256 to int256, which will always result in failure as it causes an overflow.
+The initial test fails because the `mint` function takes a `uint256` argument, but in the require statement, the function attempts to cast `uint256`` to `int256``, which will always result in failure as it causes an overflow.
+
+Target system in Echidna exercise 3:
+```
+contract MintableToken is Token {
+    int256 public totalMinted;
+    int256 public totalMintable;
+
+    constructor(int256 totalMintable_) public {
+        totalMintable = totalMintable_;
+    }
+
+    function mint(uint256 value) public onlyOwner {
+        require(int256(value) + totalMinted < totalMintable);
+        totalMinted += int256(value);
+
+        balances[msg.sender] += value;
+    }
+}
+```
+
+Test system for Echidna exercise 3:
+```
+contract TestToken is MintableToken {
+    address echidna = msg.sender;
+
+    // TODO: update the constructor
+    constructor() MintableToken(10_000) {
+        owner = echidna;
+    }
+
+    function echidna_test_balance() public view returns (bool) {
+        // TODO: add the property
+        return balances[echidna] <= 10_000;
+    }
+}
+```
 
 Consider the following:
 ```
