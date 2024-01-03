@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 import {Test, console2} from "forge-std/Test.sol";
 import {Overmint1_ERC1155, ExploitContract} from "../../src/Week8-9/Overmint1-ERC1155.sol";
 
+//forge test --match-contract Overmint1_ERC1155_Test -vvvv
 contract Overmint1_ERC1155_Test is Test {
     Overmint1_ERC1155 public overmint1_ERC1155;
     ExploitContract public exploitContract;
@@ -21,6 +22,10 @@ contract Overmint1_ERC1155_Test is Test {
     function testExploit() public {
         vm.prank(attackerWallet);
         exploitContract.attack();
+
+        vm.prank(attackerWallet); //call again otherwise caller with be this test contract
+        exploitContract.complete();
+
         _checkSolved();
     }
 
