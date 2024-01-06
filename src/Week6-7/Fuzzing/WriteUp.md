@@ -2,6 +2,11 @@
 
 ## Ethernaut DEX
 
+### Files:
+- `src/Week6-7/Fuzzing/EthernautDex1.sol`
+- `test/Week6-7/EthernautDex1_Echidna.sol`
+- `test/Week6-7/EthernautDex1.t.sol`
+
 ### Exploit:
 The exploit involves draining all of token1 from the Dex contract by swapping back and forth between `token1` and `token2`. The exploit works because in `getSwapPrice`, the price is calculated based on the current balance of the two tokens in the Dex contract.
 ```
@@ -88,6 +93,8 @@ amount = amount % (token1.balanceOf(address(this)) + 1);
 ```
 For example, Echidna could be transfering the unused supply of tokens to `TestEthernautDex`, and this increases its balance of either tokens before `swap` is called. Since the above line is used to restrict the swap amount to the range of 0 to the current token balance, a higher balance results in a higher limit of swap amounts. So this results in swap amounts that are causing a revert because the `dexContract` does not have enough of either Tokens to complete the swap from the get-go.
 
+Because of the `Panic(1): Using assert`, this possibly happens due to an overflow somewhere in the `TestEthernautDex` contract in `test/Week6-7/EthernautDex1_Echidna.sol`. 
+
 ### Code
 ```
 contract TestEthernautDex {
@@ -168,6 +175,11 @@ contract TestEthernautDex {
 ```
 
 ## Token Whale Challenge
+
+### Files
+- `src/Week6-7/Fuzzing/TokenWhaleChallenge.sol`
+- `test/Week6-7/TokenWhaleChallenge.t.sol`
+
 ### Modifications:
 Since we are using solidity ^0.8.x, an unchecked block was added in the `_transfer` function to mimic what might happen in solidity ^0.4.21, which was what the original contract was written in.
 ```
