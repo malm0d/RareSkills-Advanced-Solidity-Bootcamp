@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.13;
+
+import {Test, console2} from "forge-std/Test.sol";
+import {TokenSale, ExploitContract} from "../../src/Week8-9/TokenSale.sol";
+
+//forge test --match-contract TokenSaleTest -vvvv
+contract TokenSaleTest is Test {
+    TokenSale public tokenSale;
+    ExploitContract public exploitContract;
+
+    function setUp() public {
+        // Deploy contracts
+        tokenSale = (new TokenSale){value: 1 ether}();
+        exploitContract = new ExploitContract(tokenSale);
+        vm.deal(address(exploitContract), 4 ether);
+    }
+
+    // Use the instance of tokenSale and exploitContract
+    function testIncrement() public {
+        // Put your solution here
+        exploitContract.exploit();
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertTrue(tokenSale.isComplete(), "Challenge Incomplete");
+    }
+
+    receive() external payable {}
+}

