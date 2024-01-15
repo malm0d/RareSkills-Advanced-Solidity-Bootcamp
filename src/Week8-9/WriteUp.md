@@ -1135,3 +1135,272 @@ This number will overflow to 415992086870360064 when it is multiplied by `10 ** 
 ```
 
 Thus if the exploit contract calls `buy` and passes `115792089237316195423570985008687907853269984665640564039458` as `numTokens`, this would only cost ~ 0.41599 Ether to get that amount of tokens. The `TokenSale` contract's balance will only be about 1.41599 Ether; and when the exploit contract calls `sell` and passes in `1`, the `TokenSale` contract will transfer 1 Ether to the exploit contract and its balance will be reduced to 0.41599 Ether, thereby fufilling the exploit challenge (balance < 1 Ether).
+
+## Damn Vulnerable DeFi (Foundry): Unstoppable
+Link: https://github.com/tinchoabbate/damn-vulnerable-defi/tree/v3.0.0/contracts/unstoppable
+
+### Contracts
+- `src/Week8-9/U_UnstoppableVault.sol`
+```
+contract UnstoppableVault is IERC3156FlashLender, ReentrancyGuard, Owned, ERC4626 {
+    using SafeTransferLib for ERC20;
+    using FixedPointMathLib for uint256;
+
+    uint256 public constant FEE_FACTOR = 0.05 ether;
+    uint64 public constant GRACE_PERIOD = 30 days;
+
+    uint64 public immutable end = uint64(block.timestamp) + GRACE_PERIOD;
+
+    address public feeRecipient;
+
+    error InvalidAmount(uint256 amount);
+    error InvalidBalance();
+    error CallbackFailed();
+    error UnsupportedCurrency();
+
+    event FeeRecipientUpdated(address indexed newFeeRecipient);
+
+    constructor(
+        ERC20 _token,
+        address _owner,
+        address _feeRecipient
+    )
+        ERC4626(_token, "Oh Damn Valuable Token", "oDVT")
+        Owned(_owner)
+    {
+        feeRecipient = _feeRecipient;
+        emit FeeRecipientUpdated(_feeRecipient);
+    }
+
+    /**
+     * @inheritdoc IERC3156FlashLender
+     */
+    function maxFlashLoan(address _token) public view returns (uint256) {
+        if (address(asset) != _token) {
+            return 0;
+        }
+
+        return totalAssets();
+    }
+
+    /**
+     * @inheritdoc IERC3156FlashLender
+     */
+    function flashFee(address _token, uint256 _amount) public view returns (uint256 fee) {
+        if (address(asset) != _token) {
+            revert UnsupportedCurrency();
+        }
+
+        if (block.timestamp < end && _amount < maxFlashLoan(_token)) {
+            return 0;
+        } else {
+            return _amount.mulWadUp(FEE_FACTOR);
+        }
+    }
+
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        if (_feeRecipient != address(this)) {
+            feeRecipient = _feeRecipient;
+            emit FeeRecipientUpdated(_feeRecipient);
+        }
+    }
+
+    /**
+     * @inheritdoc ERC4626
+     */
+    function totalAssets() public view override returns (uint256) {
+        assembly {
+            // better safe than sorry
+            if eq(sload(0), 2) {
+                mstore(0x00, 0xed3ba6a6)
+                revert(0x1c, 0x04)
+            }
+        }
+        return asset.balanceOf(address(this));
+    }
+
+    /**
+     * @inheritdoc IERC3156FlashLender
+     */
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address _token,
+        uint256 amount,
+        bytes calldata data
+    )
+        external
+        returns (bool)
+    {
+        if (amount == 0) revert InvalidAmount(0); // fail early
+        if (address(asset) != _token) revert UnsupportedCurrency(); // enforce ERC3156 requirement
+        uint256 balanceBefore = totalAssets();
+        if (convertToShares(totalSupply) != balanceBefore) revert InvalidBalance(); // enforce ERC4626 requirement
+        uint256 fee = flashFee(_token, amount);
+        // transfer tokens out + execute callback on receiver
+        ERC20(_token).safeTransfer(address(receiver), amount);
+        // callback must return magic value, otherwise assume it failed
+        if (
+            receiver.onFlashLoan(msg.sender, address(asset), amount, fee, data)
+                != keccak256("IERC3156FlashBorrower.onFlashLoan")
+        ) {
+            revert CallbackFailed();
+        }
+        // pull amount + fee from receiver, then pay the fee to the recipient
+        ERC20(_token).safeTransferFrom(address(receiver), address(this), amount + fee);
+        ERC20(_token).safeTransfer(feeRecipient, fee);
+        return true;
+    }
+
+    /**
+     * @inheritdoc ERC4626
+     */
+    function beforeWithdraw(uint256 assets, uint256 shares) internal override nonReentrant {}
+
+    /**
+     * @inheritdoc ERC4626
+     */
+    function afterDeposit(uint256 assets, uint256 shares) internal override nonReentrant {}
+}
+
+contract DamnValuableToken is ERC20 {
+    constructor() ERC20("DamnValuableToken", "DVT", 18) {
+        _mint(msg.sender, type(uint256).max);
+    }
+}
+```
+- `src/Week8-9/U_ReceiverUnstoppable.sol`
+```
+contract ReceiverUnstoppable is Owned, IERC3156FlashBorrower {
+    UnstoppableVault private immutable pool;
+
+    error UnexpectedFlashLoan();
+
+    constructor(address poolAddress) Owned(msg.sender) {
+        pool = UnstoppableVault(poolAddress);
+    }
+
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata
+    )
+        external
+        returns (bytes32)
+    {
+        if (initiator != address(this) || msg.sender != address(pool) || token != address(pool.asset()) || fee != 0) {
+            revert UnexpectedFlashLoan();
+        }
+
+        ERC20(token).approve(address(pool), amount);
+
+        return keccak256("IERC3156FlashBorrower.onFlashLoan");
+    }
+
+    function executeFlashLoan(uint256 amount) external onlyOwner {
+        address asset = address(pool.asset());
+        pool.flashLoan(this, asset, amount, bytes(""));
+    }
+}
+```
+- `test/Week8-9/Unstoppable.t.sol`
+```
+contract UnstoppableTest is Test {
+    uint256 internal constant TOKENS_IN_VAULT = 1_000_000e18;
+    uint256 internal constant INITIAL_PLAYER_TOKEN_BALANCE = 100e18;
+
+    UnstoppableVault public vault;
+    ReceiverUnstoppable public receiverContract;
+    DamnValuableToken public token;
+
+    address deployer;
+    address player;
+    address someUser;
+
+    function setUp() public {
+        /**
+         * SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE
+         */
+        deployer = address(this);
+        player = address(0xdead);
+        someUser = address(0xbeef);
+
+        token = new DamnValuableToken();
+        vault = new UnstoppableVault(
+            token,
+            deployer,
+            deployer
+        );
+        assertEq(address(vault.asset()), address(token));
+
+        token.approve(address(vault), TOKENS_IN_VAULT);
+        vault.deposit(TOKENS_IN_VAULT, deployer);
+        assertEq(token.balanceOf(address(vault)), TOKENS_IN_VAULT);
+        assertEq(vault.totalAssets(), TOKENS_IN_VAULT);
+        assertEq(vault.totalSupply(), TOKENS_IN_VAULT);
+        assertEq(vault.maxFlashLoan(address(token)), TOKENS_IN_VAULT);
+        assertEq(vault.flashFee(address(token), TOKENS_IN_VAULT - 1), 0);
+        assertEq(vault.flashFee(address(token), TOKENS_IN_VAULT), 50_000e18);
+
+        token.transfer(player, INITIAL_PLAYER_TOKEN_BALANCE);
+
+        //Show it is possible for someUser to take out a flash loan
+        vm.startPrank(someUser);
+        receiverContract = new ReceiverUnstoppable(address(vault));
+        receiverContract.executeFlashLoan(100e18);
+        vm.stopPrank();
+    }
+
+    function testExploit() public {
+        vm.startPrank(player);
+        token.transfer(address(vault), 1e18);
+        vm.expectRevert();
+        validation();
+    }
+
+    function validation() internal {
+        // It is no longer possible to execute flash loans
+        vm.startPrank(someUser);
+        receiverContract.executeFlashLoan(100e18);
+        vm.stopPrank();
+    }
+}
+```
+
+### Exploit
+To complete the exploit, we have to make the vault stop offereing flash loans (DOS), that is, the Vault contract will not be able to send anymore flash loans.
+
+In `Unstoppable.t.sol`, the way the challenge is set up is:
+1. The Vault accepts DVT tokens as the asset
+2. The deployer deposits `1_000_000e18` DVT tokens into the vault.
+3. The vault now has `totalAssets` of `1_000_000e18`, and the `totalSupply` (the total number of shares minted out) is also `1_000_000e18`.
+4. Deployer sends `100e18` DVT tokens to `player` who is the exploiter.
+
+On inspecting the `flashLoan` function in the Vault contract, our attack vector lies in the following lines:
+```
+    uint256 balanceBefore = totalAssets();
+    if (convertToShares(totalSupply) != balanceBefore) revert InvalidBalance(); // enforce ERC4626 requirement
+```
+This would be a reasonable attack vector as other revert conditions are not meaningful to trigger to DOS the `flashLoan` function.
+
+To trigger the `InvalidBalance` revert, we need to ensure that `convertToShares(totalSupply) != balanceBefore` holds true. The Vault contract overrides `totalAssets` to return the vault's balance of the asset token (DVT), while `totalSupply` is simply the total supply of shares that have been minted from calling `deposit` to deposit DVT into the Vault.
+
+If we look into the `convertToShares` function:
+```
+    function convertToShares(uint256 assets) public view virtual returns (uint256) {
+        uint256 supply = totalSupply; // Saves an extra SLOAD if totalSupply is non-zero.
+
+        return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+    }
+```
+So long as `supply == 0` is `false`, which at this point after the set up will always hold, calling `convertToShares` will always return the result of: `asset amount argument * supply / totalAssets`. The `flashLoan` function passes in the `totalSupply` of shares to `convertToShares`, which technically is not the expected argument as `convertToShares` takes the given amount of asset tokens and converts them to the equivalent amount of shares they represent. So this is the first sign of trouble.
+
+In the set up, when `executeFlashLoan` was called, the result of `convertToShares` was: `1_000_000e18 * 1_000_000e18 /1_000_000e18` so there was no issue. However since `totalAssets` returns the balance of DVT tokens that the Vault holds, a malicious actor or contract can simply transfer DVT tokens to the Vault without calling `deposit` and this will increase the value of `totalAssets`. In doing so, there will be a mismatch of `totalSupply` as `deposit` was not called to mint the appropriate number of shares to match the increase in `totalAssets`. This is the second sign of trouble.
+
+Thus, to successfully DOS `flashLoan` all we need to do is transfer some DVT tokens to the Vault, and this will allow `convertToShares(totalSupply) != balanceBefore` to be true, and `flashLoan` will always revert.
+1. Transfer `1e18` DVT to the Vault, `totalAsset` will now be: `1_000_001e18`, while `totalSupply` remains at `1_000_000e18`
+2. `convertToShares(totalSupply)` => 1_000_000e18 * 1_000_000e18 / 1_000_001e18 => 0
+3. `balanceBefore = totalAssets()` => 1_000_001e18
+4. `convertToShares(totalSupply) != balanceBefore` => true, revert `flashLoan`
+

