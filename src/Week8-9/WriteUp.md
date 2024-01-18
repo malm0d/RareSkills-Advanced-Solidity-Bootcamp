@@ -1,4 +1,4 @@
-# CTF Write Ups
+# CTF Write Ups 1
 
 ## Capture the Ether Foundry (RareSkills): Guess the Secret Number
 Link: https://github.com/RareSkills/capture-the-ether-foundry/tree/master/GuessNewNumber
@@ -913,7 +913,7 @@ contract MaliciousPartner {
 To complete this challenge, we have to deny the owner from withdrawing funds when they call `withdraw`, essentially carrying out a DOS attack. Exploiting this contract requires some understanding of EIP-150 and the 63/64 Rule for gas. When `partner.call{value: amountToSend}("");` is executed, 63/64 of the available gas will be forwarded to `partner`, while 1/64 of the gas remains with the contract. By setting `partner` as a malicious contract with an infinite loop in the `receive` function, when `partner` receives ether from the contract, this infinite loop will execute and continue running until all the gas is consumed before the `payable(owner).transfer(amountToSend);` is executed. Since the return value was ignored in the low level `.call`, the failure in the `partner` would go unchecked in the event of any failure. The main contract will try to execute the transfer to `owner` but this will fail as the contract only has 1/64 gas, which is insufficient to continue executing the rest of the function. An error `EvmError: OutOfGas` will be thrown and `owner` will not be able to receive funds
 
 ## Damn Vulnerable DeFi (Foundry): Side Entrance
-Link: https://github.com/nicolasgarcia214/damn-vulnerable-defi-foundry/tree/master/test/Levels/side-entrance
+Link: https://github.com/tinchoabbate/damn-vulnerable-defi/tree/v3.0.0/contracts/side-entrance
 
 ### Contracts
 - `src/Week8-9/SideEntranceLenderPool.sol`
