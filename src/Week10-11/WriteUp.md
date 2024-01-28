@@ -1133,3 +1133,21 @@ contract RewardTokenTest is Test {
 The vulnerability is in the `withdrawAndClaimEarnings` function, where `delete stakes[msg.sender]` is executed only after the NFT `safeTransferFrom`. When `Exploit` stakes into `Depositoor` and then calls `withdrawAndClaimEarnings`, a `safeTransferFrom` will be called and the `onERC721Received` hook in `Exploit` will be called. Since `delete stakes[msg.sender]` hasn't been executed when control has been handed over to `Exploit`, `Exploit` can reenter `Depositoor` and call `claimEarnings` as its stake will still be present in the `stakes` mapping.
 
 `Depositoor` prevents anyone from claiming more than half the supply in the contract, which means the maximum claimable is only 50 ether. So for the exploit to work, after calling `Exploit.stakeNFT`, we wait for 10 days so that the amount owed is techinically 100 ether. And when we call `Exploit.exploit` the cross-function reentracy will allow `Exploit` to claim twice, effectively draining `Depositoor`.
+
+## RareSkills Solidity Riddles: RewardToken
+Link: https://github.com/RareSkills/solidity-riddles/blob/main/contracts/ReadOnly.sol
+
+### Contracts
+- `src/Week10-11/ReadOnly.sol`
+```
+```
+- `src/Week10-11/ReadOnly.t.sol`
+```
+```
+
+### Exploit
+In this exploit, the goal is to set the `lpTokenPrice` in `VulnerableDeFiContract` to zero. The `lpTokenPrice` is retrieved when `snapshotPrice` (which calls the function `getVirtualPrice` in `ReadOnlyPool`) is called, and the goal is to somehow make `address(this).balance` less than the `totalSupply` during the call.
+
+The vulnerability lies in the `removeLiquidity` function in `ReadOnlyPool`. In the function, a `call` is made to send ether back to `msg.sender` before the `_burn` function is executed. This means that an exploiter with a malicious `receive` function can call `VulnerableDeFiContract.snapshotPrice` to manipulate `lpTokenPrice` before `removeLiquidity` completes its operations; that is, the value of `lpTokenPrice` will be calculated with a reduced ether balance and an unchanged total supply of shares (LP tokens). In `virtualPrice = address(this).balance / totalSupply();`, if `totalSupply` is more than the balance, it will return `0`.
+
+Thus in `Exploit`, the `exploit` function calls `addLiquidity` to deposit into `ReadOnlyPool`. And then calls `removeLiquidity`. While `removeLiquidity` transfers ether to `Exploit`, `Exploit`'s receive function will call `vulnerableDeFiContract.snapshotPrice()` to update the value of `lpTokenPrice` with reduced ether and unchanged total supply, resulting in `lpTokenPrice == 0`.
