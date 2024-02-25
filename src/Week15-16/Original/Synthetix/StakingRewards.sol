@@ -12,8 +12,8 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 // Inheritance
 // import "./IStakingRewards.sol";
-import "./RewardsDistributionRecipient.sol";
-import "./Pausable.sol";
+import "./SupportingContracts/RewardsDistributionRecipient.sol";
+import "./SupportingContracts/Pausable.sol";
 
 // https://docs.synthetix.io/contracts/source/contracts/stakingrewards
 contract StakingRewards is RewardsDistributionRecipient, ReentrancyGuard, Pausable {
