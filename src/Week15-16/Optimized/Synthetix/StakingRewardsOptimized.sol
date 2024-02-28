@@ -56,9 +56,15 @@ contract StakingRewardsOptimized is ReentrancyGuard, Pausable {
     /*                           Modifiers                          */
     /****************************************************************/
     
-    // modifier updateReward(address account) {
-
-    // }
+    modifier updateReward(address account) {
+        rewardsInfo.rewardPerTokenStored = rewardPerToken();
+        _setLastUpdateTime(uint128(lastTimeRewardApplicable()));
+        if (account != address(0)) {
+            rewards[account] = earned(account);
+            userRewardPerTokenPaid[account] = rewardsInfo.rewardPerTokenStored;
+        }
+        _;
+    }
 
     /****************************************************************/
     /*                          Constructor                         */
@@ -127,6 +133,14 @@ contract StakingRewardsOptimized is ReentrancyGuard, Pausable {
     /*                    External/Public Functions                 */
     /****************************************************************/
 
+    function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {}
+
+    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {}
+
+    function getReward() public nonReentrant updateReward(msg.sender) {}
+
+    function exit() external {}
+
     /****************************************************************/
     /*                      Authorized Functions                    */
     /****************************************************************/
@@ -161,22 +175,22 @@ contract StakingRewardsOptimized is ReentrancyGuard, Pausable {
 
     function _setLastUpdateTime(uint128 _lastUpdateTime) internal {
         assembly {
-            // let rewardsInfoSlot := rewardsInfo.slot
-            // let timeInfoPackedSlot := rewardsIndo.timeInfoPacked.slot
-            // let current := sload(timeInfoPackedSlot)
-            // let mask := not(LOWER_HALF_MASK) //flip the bits in `LOWER_HALF_MASK`
-            // let clearedLower := and(current, mask)
-            // sstore(timeInfoPackedSlot, or(clearedLower, _lastUpdateTime))
+            let rewardsInfoSlot := rewardsInfo.slot
+            let timeInfoPackedSlot := add(rewardsInfoSlot, 3)
+            let current := sload(timeInfoPackedSlot)
+            let mask := not(LOWER_HALF_MASK) //flip the bits in `LOWER_HALF_MASK`
+            let clearedLower := and(current, mask)
+            sstore(timeInfoPackedSlot, or(clearedLower, _lastUpdateTime))
         }
     }
 
     function _setPeriodFinish(uint128 _periodFinish) internal {
         assembly {
-            // let rewardsInfoSlot := rewardsInfo.slot
-            // let timeInfoPackedSlot := timeInfoPacked.slot
-            // let current := sload(timeInfoPackedSlot)
-            // let clearedUpper := and(current, LOWER_HALF_MASK)
-            // sstore(timeInfoPackedSlot, or(clearedUpper, shl(128, _periodFinish)))
+            let rewardsInfoSlot := rewardsInfo.slot
+            let timeInfoPackedSlot := add(rewardsInfoSlot, 3)
+            let current := sload(timeInfoPackedSlot)
+            let clearedUpper := and(current, LOWER_HALF_MASK)
+            sstore(timeInfoPackedSlot, or(clearedUpper, shl(128, _periodFinish)))
         }
     }
 }
