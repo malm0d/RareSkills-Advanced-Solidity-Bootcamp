@@ -79,7 +79,7 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
     {
         rewardsInfo.rewardsToken = _rewardsToken;
         stakingToken = _stakingToken;
-        // rewardsDistribution = _rewardsDistribution;
+        rewardsDistribution = _rewardsDistribution;
     }
 
     /****************************************************************/
