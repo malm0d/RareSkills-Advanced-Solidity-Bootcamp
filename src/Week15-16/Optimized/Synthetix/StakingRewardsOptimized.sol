@@ -7,12 +7,13 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "../../Original/Synthetix/SupportingContracts/RewardsDistributionRecipient.sol";
 import "../../Original/Synthetix/SupportingContracts/Pausable.sol";
 
-// RewardsDistributionRecipient,
-contract StakingRewardsOptimized is ReentrancyGuard, Pausable {
+contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
     error InvalidAddress();
     error IncompleteRewardsPeriod();
+    error AmountZero();
+    error RewardExceedsBalance();
 
     /****************************************************************/
     /*                            Storage                           */
@@ -59,10 +60,8 @@ contract StakingRewardsOptimized is ReentrancyGuard, Pausable {
     modifier updateReward(address account) {
         rewardsInfo.rewardPerTokenStored = rewardPerToken();
         _setLastUpdateTime(uint128(lastTimeRewardApplicable()));
-        if (account != address(0)) {
-            rewards[account] = earned(account);
-            userRewardPerTokenPaid[account] = rewardsInfo.rewardPerTokenStored;
-        }
+        rewards[account] = earned(account);
+        userRewardPerTokenPaid[account] = rewardsInfo.rewardPerTokenStored;
         _;
     }
 
@@ -133,19 +132,68 @@ contract StakingRewardsOptimized is ReentrancyGuard, Pausable {
     /*                    External/Public Functions                 */
     /****************************************************************/
 
-    function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {}
+    function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {
+        if (amount == 0) {
+            revert AmountZero();
+        }
+        _totalSupply = _totalSupply + amount;
+        _balances[msg.sender] = _balances[msg.sender] + amount;
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), amount);
+        emit Staked(msg.sender, amount);
+    }
 
-    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {}
+    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
+        if (amount == 0) {
+            revert AmountZero();
+        }
+        _totalSupply = _totalSupply - amount;
+        _balances[msg.sender] = _balances[msg.sender] - amount;
+        IERC20(stakingToken).safeTransfer(msg.sender, amount);
+        emit Withdrawn(msg.sender, amount);
+    }
 
-    function getReward() public nonReentrant updateReward(msg.sender) {}
+    function getReward() public nonReentrant updateReward(msg.sender) {
+        uint256 reward = rewards[msg.sender];
+        if (reward > 0) {
+            rewards[msg.sender] = 0;
+            IERC20(rewardsInfo.rewardsToken).safeTransfer(msg.sender, reward);
+            emit RewardPaid(msg.sender, reward);
+        }
+    }
 
-    function exit() external {}
+    function exit() external {
+        withdraw(_balances[msg.sender]);
+        getReward();
+    }
 
     /****************************************************************/
     /*                      Authorized Functions                    */
     /****************************************************************/
 
-    //function notifyRewardAmount(uint256 reward) external override onlyRewardsDistribution updateReward(address(0)) {}
+    function notifyRewardAmount(uint256 reward) external override onlyRewardsDistribution {
+        rewardsInfo.rewardPerTokenStored = rewardPerToken();
+        
+        RewardsInfo storage _rewardsInfo = rewardsInfo;
+        uint256 blockTimestamp = block.timestamp;
+        uint256 periodFinish = getPeriodFinish();
+        uint256 rewardsDuration = uint256(_rewardsInfo.rewardsDuration);
+
+        if (blockTimestamp >= periodFinish) {
+            _rewardsInfo.rewardRate = reward / rewardsDuration;
+        } else {
+            uint256 remaining = periodFinish - blockTimestamp;
+            uint256 leftover = remaining * _rewardsInfo.rewardRate;
+            _rewardsInfo.rewardRate = (reward + leftover) / rewardsDuration;
+        }
+
+        uint256 balance = IERC20(_rewardsInfo.rewardsToken).balanceOf(address(this));
+        if (_rewardsInfo.rewardRate > balance / rewardsDuration) {
+            revert RewardExceedsBalance();
+        }
+
+        _setTimeInfo(uint128(blockTimestamp), uint128(blockTimestamp + rewardsDuration));
+        emit RewardAdded(reward);
+    }
 
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external payable onlyOwner {
         if (tokenAddress != address(stakingToken)) {
