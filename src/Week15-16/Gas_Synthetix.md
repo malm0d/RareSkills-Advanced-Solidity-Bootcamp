@@ -29,7 +29,7 @@ Overall gas change: -26567 (-4.780%)
 ```
 
 ### Optimized
-- `src/Week15-16/Optimized/Synthetix/StakingRewards.sol`
+- `src/Week15-16/Optimized/Synthetix/StakingRewardsOptimized.sol`
 ```
 StakingRewardsTest:test_exit() (gas: 45944)
 StakingRewardsTest:test_getReward() (gas: 96386)
