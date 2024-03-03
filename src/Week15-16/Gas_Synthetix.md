@@ -1,7 +1,7 @@
 ## Gas Usage Comparison
 
 ### Synthetix: StakingRewards
-Overall gas change: -26567 (-4.780%).
+Overall gas change: -27771 (-4.996%)
 
 ### Diff
 ```
@@ -15,9 +15,9 @@ test_exit() (gas: -1330 (-2.813%))
 test_withdraw() (gas: -1416 (-3.328%)) 
 test_stake_Revert() (gas: -1814 (-5.082%)) 
 test_withdraw_Revert() (gas: -1803 (-5.369%)) 
-test_notifyRewardAmount_Second() (gas: -7700 (-11.313%)) 
-test_notifyRewardAmount_First() (gas: -4430 (-11.592%)) 
-test_notifyRewardAmount_Revert() (gas: -4437 (-11.606%))
+test_notifyRewardAmount_Second() (gas: -8302 (-12.197%)) 
+test_notifyRewardAmount_First() (gas: -4731 (-12.380%)) 
+test_notifyRewardAmount_Revert() (gas: -4738 (-12.394%)) 
 
 ----------  Increased usage  ----------
 test_setRewardsDuration() (gas: 37 (0.188%)) 
@@ -25,7 +25,7 @@ test_rewardsDuration() (gas: 25 (0.329%))
 test_lastUpdateTime() (gas: 37 (0.487%)) 
 
 
-Overall gas change: -26567 (-4.780%)
+Overall gas change: -27771 (-4.996%)
 ```
 
 ### Optimized
@@ -34,9 +34,9 @@ Overall gas change: -26567 (-4.780%)
 StakingRewardsTest:test_exit() (gas: 45944)
 StakingRewardsTest:test_getReward() (gas: 96386)
 StakingRewardsTest:test_lastUpdateTime() (gas: 7630)
-StakingRewardsTest:test_notifyRewardAmount_First() (gas: 33785)
-StakingRewardsTest:test_notifyRewardAmount_Revert() (gas: 33792)
-StakingRewardsTest:test_notifyRewardAmount_Second() (gas: 60364)
+StakingRewardsTest:test_notifyRewardAmount_First() (gas: 33484)
+StakingRewardsTest:test_notifyRewardAmount_Revert() (gas: 33491)
+StakingRewardsTest:test_notifyRewardAmount_Second() (gas: 59762)
 StakingRewardsTest:test_recoverERC20() (gas: 30757)
 StakingRewardsTest:test_recoverERC20_Revert() (gas: 14928)
 StakingRewardsTest:test_rewardsDuration() (gas: 7619)

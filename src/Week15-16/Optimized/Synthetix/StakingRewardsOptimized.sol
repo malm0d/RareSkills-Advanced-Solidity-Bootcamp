@@ -188,17 +188,19 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
         uint256 _periodFinish = periodFinish();
         uint256 _rewardsDuration = rewardsDuration();
 
-        if (blockTimestamp >= _periodFinish) {
-            rewardRate = reward / _rewardsDuration;
-        } else {
-            uint256 remaining = _periodFinish - blockTimestamp;
-            uint256 leftover = remaining * rewardRate;
-            rewardRate = (reward + leftover) / _rewardsDuration;
-        }
+        unchecked {
+            if (blockTimestamp >= _periodFinish) {
+                rewardRate = reward / _rewardsDuration;
+            } else {
+                uint256 remaining = _periodFinish - blockTimestamp;
+                uint256 leftover = remaining * rewardRate;
+                rewardRate = (reward + leftover) / _rewardsDuration;
+            }
 
-        uint256 balance = IERC20(rewardsToken()).balanceOf(address(this));
-        if (rewardRate > balance / _rewardsDuration) {
-            revert RewardExceedsBalance();
+            uint256 balance = IERC20(rewardsToken()).balanceOf(address(this));
+            if (rewardRate > balance / _rewardsDuration) {
+                revert RewardExceedsBalance();
+            }
         }
 
         _setTimeInfo(uint128(blockTimestamp), uint128(blockTimestamp + _rewardsDuration));
