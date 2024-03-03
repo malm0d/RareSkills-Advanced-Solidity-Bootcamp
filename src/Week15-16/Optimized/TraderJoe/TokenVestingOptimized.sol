@@ -142,8 +142,8 @@ contract TokenVestingOptimized is Ownable {
 
     function release(address _token) external {
         uint256 unreleased = _releaseableAmount(_token);
-        if (unreleased == 0) {
-            assembly {
+        assembly {
+                if iszero(unreleased) {
                 mstore(0x00, 0x20)
                 mstore(0x20, 0x1f)
                 mstore(0x40, 0x546f6b656e56657374696e673a206e6f20746f6b656e73206172652064756500)
