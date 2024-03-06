@@ -62,18 +62,6 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
     event Recovered(address token, uint256 amount);
 
     /****************************************************************/
-    /*                           Modifiers                          */
-    /****************************************************************/
-    
-    modifier updateReward(address account) {
-        rewardPerTokenStored = rewardPerToken();
-        _setLastUpdateTime(uint128(lastTimeRewardApplicable()));
-        rewards[account] = earned(account);
-        userRewardPerTokenPaid[account] = rewardPerTokenStored;
-        _;
-    }
-
-    /****************************************************************/
     /*                          Constructor                         */
     /****************************************************************/
 
@@ -114,13 +102,13 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
 
     function periodFinish() public view returns (uint256 pf) {
         assembly {
-            pf := shr(208, sload(timeInfoPacked.slot))
+            pf := shr(208, sload(rewardTimeInfoPacked.slot))
         }
     }
 
     function rewardsDuration() public view returns (uint256 dur) {
         assembly {
-            dur := shr(208, sload(timeInfoPacked.slot))
+            dur := shr(208, sload(rewardTimeInfoPacked.slot))
         }
     }
 
@@ -177,27 +165,34 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
     /*                    External/Public Functions                 */
     /****************************************************************/
 
-    function stake(uint256 amount) external nonReentrant notPaused updateReward(msg.sender) {
+    function stake(uint256 amount) external nonReentrant notPaused {
         if (amount == 0) {
             revert AmountZero();
         }
+
+        _updateReward(msg.sender);
+
         _totalSupply = _totalSupply + amount;
         _balances[msg.sender] = _balances[msg.sender] + amount;
         IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), amount);
         emit Staked(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
+    function withdraw(uint256 amount) public nonReentrant {
         if (amount == 0) {
             revert AmountZero();
         }
+
+        _updateReward(msg.sender);
+
         _totalSupply = _totalSupply - amount;
         _balances[msg.sender] = _balances[msg.sender] - amount;
         IERC20(stakingToken).safeTransfer(msg.sender, amount);
         emit Withdrawn(msg.sender, amount);
     }
 
-    function getReward() public nonReentrant updateReward(msg.sender) {
+    function getReward() public nonReentrant {
+        _updateReward(msg.sender);
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
@@ -286,48 +281,41 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
     /****************************************************************/
     /*                   Internal/Private Functions                 */
     /****************************************************************/
+    
+    function _updateReward(address account) internal {
+        uint256 _rewardTimeInfoPacked = rewardTimeInfoPacked;
+        uint256 _updatedRewardPerToken;
 
-    // function _setRewardsToken(address _rewardsToken) internal {
-    //     assembly {
-    //         let tokenAndDurationSlot := tokenAndDuration.slot
-    //         let current := sload(tokenAndDurationSlot)
-    //         let mask := not(BITMASK_ADDRESS) //flip the bits in `BITMASK_ADDRESS`
-    //         let clearedLower := and(current, mask)
-    //         sstore(tokenAndDurationSlot, or(clearedLower, _rewardsToken))
-    //     }
-    // }
+        if (_totalSupply == 0) {
+            assembly {
+                _updatedRewardPerToken := shr(96, shl(96, _rewardTimeInfoPacked))
+            }
+        } else {
+            uint256 _rewardPerTokenStored;
+            uint256 _periodFinish;
+            uint256 _lastUpdateTime;
+            uint256 _rewardRate;
+            assembly {
+                _rewardPerTokenStored := shr(96, shl(96, _rewardTimeInfoPacked))
+                _periodFinish := shr(208, _rewardTimeInfoPacked)
+                _lastUpdateTime := and(_BITMASK_UINT48, shr(160, _rewardTimeInfoPacked))
+                _rewardRate := shr(48, shl(48, sload(rewardRateDuration.slot)))
+            }
 
-    // function _setRewardsDuration(uint96 _rewardsDuration) internal {
-    //     assembly {
-    //         let tokenAndDurationSlot := tokenAndDuration.slot
-    //         let current := sload(tokenAndDurationSlot)
-    //         let clearedUpper := and(current, BITMASK_ADDRESS)
-    //         sstore(tokenAndDurationSlot, or(clearedUpper, shl(160, _rewardsDuration)))
-    //     }
-    // }
+            _periodFinish = block.timestamp < _periodFinish ? block.timestamp : _periodFinish;
 
-    // //Function to set both `lastUpdateTime` and `periodFinish` at once
-    // function _setTimeInfo(uint128 _lastUpdateTime, uint128 _periodFinish) internal {
-    //     timeInfoPacked = (uint256(_periodFinish) << 128) | uint256(_lastUpdateTime);
-    // }
+            _updatedRewardPerToken = _rewardPerTokenStored + (
+                (_periodFinish - _lastUpdateTime) * _rewardRate * 1e18
+            ) / _totalSupply;
+        }
+        //update rewardPerToken with _updatedRewardPerToken
+        //update lastUpdateTime with _periodFinish
+        assembly {
 
-    // function _setLastUpdateTime(uint128 _lastUpdateTime) internal {
-    //     assembly {
-    //         let timeInfoPackedSlot := timeInfoPacked.slot
-    //         let current := sload(timeInfoPackedSlot)
-    //         let mask := not(LOWER_HALF_MASK) //flip the bits in `LOWER_HALF_MASK`
-    //         let clearedLower := and(current, mask)
-    //         sstore(timeInfoPackedSlot, or(clearedLower, _lastUpdateTime))
-    //     }
-    // }
+        }
+        // rewards[account] = earned(account);
+        // userRewardPerTokenPaid[account] = rewardPerTokenStored;
+        // _;
 
-    //Not used in the contract, but included for completeness
-    // function _setPeriodFinish(uint128 _periodFinish) internal {
-    //     assembly {
-    //         let timeInfoPackedSlot := timeInfoPacked.slot
-    //         let current := sload(timeInfoPackedSlot)
-    //         let clearedUpper := and(current, LOWER_HALF_MASK)
-    //         sstore(timeInfoPackedSlot, or(clearedUpper, shl(128, _periodFinish)))
-    //     }
-    // }
+    }
 }
