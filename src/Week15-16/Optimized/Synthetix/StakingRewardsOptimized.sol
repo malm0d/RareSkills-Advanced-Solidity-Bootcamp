@@ -19,7 +19,6 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
     /*                            Storage                           */
     /****************************************************************/
 
-
     //[0 - 207] `rewardRate` uint208
     //[208 - 255] `rewardsDuration` uint48
     uint256 private rewardRateDuration;
@@ -108,7 +107,7 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
 
     function rewardsDuration() public view returns (uint256 dur) {
         assembly {
-            dur := shr(208, sload(rewardTimeInfoPacked.slot))
+            dur := shr(208, sload(rewardRateDuration.slot))
         }
     }
 
@@ -144,12 +143,6 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
         _periodFinish = block.timestamp < _periodFinish ? block.timestamp : _periodFinish;
 
         return _rewardPerTokenStored + ((_periodFinish - _lastUpdateTime) * _rewardRate * 1e18) / _totalSupply;
-    }
-
-    function earned(address account) public view returns (uint256) {
-        return (
-            (_balances[account] * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18 + rewards[account]
-        );
     }
 
     function getRewardForDuration() external view returns (uint256 res) {
@@ -284,38 +277,42 @@ contract StakingRewardsOptimized is RewardsDistributionRecipient, ReentrancyGuar
     
     function _updateReward(address account) internal {
         uint256 _rewardTimeInfoPacked = rewardTimeInfoPacked;
-        uint256 _updatedRewardPerToken;
+        uint256 _updatedRewardPerTokenStored;
+
+        uint256 _periodFinish = _rewardTimeInfoPacked >> 208;
+        uint256 _updatedPeriodFinish = block.timestamp < _periodFinish ? block.timestamp : _periodFinish;
 
         if (_totalSupply == 0) {
             assembly {
-                _updatedRewardPerToken := shr(96, shl(96, _rewardTimeInfoPacked))
+                _updatedRewardPerTokenStored := shr(96, shl(96, _rewardTimeInfoPacked))
             }
         } else {
             uint256 _rewardPerTokenStored;
-            uint256 _periodFinish;
             uint256 _lastUpdateTime;
             uint256 _rewardRate;
             assembly {
                 _rewardPerTokenStored := shr(96, shl(96, _rewardTimeInfoPacked))
-                _periodFinish := shr(208, _rewardTimeInfoPacked)
                 _lastUpdateTime := and(_BITMASK_UINT48, shr(160, _rewardTimeInfoPacked))
                 _rewardRate := shr(48, shl(48, sload(rewardRateDuration.slot)))
             }
 
-            _periodFinish = block.timestamp < _periodFinish ? block.timestamp : _periodFinish;
-
-            _updatedRewardPerToken = _rewardPerTokenStored + (
-                (_periodFinish - _lastUpdateTime) * _rewardRate * 1e18
+            _updatedRewardPerTokenStored = _rewardPerTokenStored + (
+                (_updatedPeriodFinish - _lastUpdateTime) * _rewardRate * 1e18
             ) / _totalSupply;
         }
-        //update rewardPerToken with _updatedRewardPerToken
-        //update lastUpdateTime with _periodFinish
+
+        //update rewardPerTokenStored with _updatedRewardPerTokenStored
+        //update lastUpdateTime with _updatedPeriodFinish
         assembly {
-
+            let _updatedLastUpdateTime := shl(160, _updatedPeriodFinish)
+            let _combinedUpdatedData := or(_updatedRewardPerTokenStored, _updatedLastUpdateTime)
+            let _rewardTimeInfoPackedClearedLower := and(not(_BITMASK_UINT48), _rewardTimeInfoPacked)
+            sstore(rewardTimeInfoPacked.slot, or(_rewardTimeInfoPackedClearedLower, _combinedUpdatedData))
         }
-        // rewards[account] = earned(account);
-        // userRewardPerTokenPaid[account] = rewardPerTokenStored;
-        // _;
+        rewards[account] = _balances[account] * (
+            _updatedRewardPerTokenStored - userRewardPerTokenPaid[account]
+        ) / 1e18 + rewards[account];
 
+        userRewardPerTokenPaid[account] = _updatedRewardPerTokenStored;
     }
 }
