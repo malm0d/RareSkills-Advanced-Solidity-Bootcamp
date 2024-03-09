@@ -6,7 +6,7 @@ import {MockERC20} from "../mocks/MockERC20.sol";
 import {TokenVesting} from "src/Week15-16/Original/TraderJoe/TokenVesting.sol";
 import {TokenVestingOptimized} from "src/Week15-16/Optimized/TraderJoe/TokenVestingOptimized.sol";
 
-// forge test --mc TokenVestingTest --gas-report
+// forge test --mc TokenVestingTest --gas-report / -vvvv
 // forge snapshot --mc TokenVestingTest --snap <FileName>
 // forge snapshot --mc TokenVestingTest --diff <FileName>
 contract TokenVestingTest is Test {

@@ -1,33 +1,34 @@
 ## Gas Usage Comparison
 
 ### TraderJoe: TokenVesting
-Overall gas change: -22736 (-4.084%)
+Overall gas change: -54293 (-9.752%)
 
 ### Diff
 ```
 ----------  Gas Savings  ----------
 test_beneficiary() (gas: 0 (0.000%)) 
 test_revocable() (gas: 0 (0.000%)) 
-test_revoked() (gas: -29 (-0.290%)) 
+test_duration() (gas: 6 (0.062%)) 
+test_cliff() (gas: 18 (0.186%)) 
+test_start() (gas: 27 (0.279%)) 
 test_released() (gas: -29 (-0.292%)) 
-test_emergencyRevoke() (gas: -226 (-0.435%)) 
-test_emergencyRevoke_revert() (gas: -448 (-0.844%)) 
-test_revoke_revert() (gas: -706 (-1.203%)) 
-test_release_revert() (gas: -349 (-1.679%)) 
-test_revoke_two() (gas: -4815 (-6.454%)) 
-test_revoke_one() (gas: -7291 (-6.769%)) 
-test_release_one() (gas: -4447 (-7.082%)) 
-test_release_two() (gas: -4447 (-7.082%)) 
-Overall gas change: -22736 (-4.084%)
-
+test_revoked() (gas: -47 (-0.471%)) 
+test_emergencyRevoke() (gas: -328 (-0.631%)) 
+test_emergencyRevoke_revert() (gas: -553 (-1.042%)) 
+test_release_revert() (gas: -317 (-1.525%)) 
+test_revoke_revert() (gas: -3856 (-6.570%)) 
+test_release_one() (gas: -4733 (-7.537%)) 
+test_release_two() (gas: -4733 (-7.538%)) 
+test_revoke_two() (gas: -8543 (-11.451%)) 
+test_revoke_one() (gas: -31205 (-28.970%)) 
+Overall gas change: -54293 (-9.752%)
 
 ----------  Increased usage  ----------
 test_duration() (gas: 6 (0.062%)) 
 test_cliff() (gas: 18 (0.186%)) 
 test_start() (gas: 27 (0.279%)) 
 
-
-Overall gas change: -22736 (-4.084%)
+Overall gas change: -54293 (-9.752%)
 ```
 
 ### Optimized
@@ -36,17 +37,17 @@ Overall gas change: -22736 (-4.084%)
 TokenVestingTest:test_beneficiary() (gas: 7754)
 TokenVestingTest:test_cliff() (gas: 9716)
 TokenVestingTest:test_duration() (gas: 9642)
-TokenVestingTest:test_emergencyRevoke() (gas: 51776)
-TokenVestingTest:test_emergencyRevoke_revert() (gas: 52637)
-TokenVestingTest:test_release_one() (gas: 58347)
-TokenVestingTest:test_release_revert() (gas: 20438)
-TokenVestingTest:test_release_two() (gas: 58345)
+TokenVestingTest:test_emergencyRevoke() (gas: 51674)
+TokenVestingTest:test_emergencyRevoke_revert() (gas: 52532)
+TokenVestingTest:test_release_one() (gas: 58061)
+TokenVestingTest:test_release_revert() (gas: 20470)
+TokenVestingTest:test_release_two() (gas: 58059)
 TokenVestingTest:test_released() (gas: 9889)
 TokenVestingTest:test_revocable() (gas: 7625)
-TokenVestingTest:test_revoke_one() (gas: 100423)
-TokenVestingTest:test_revoke_revert() (gas: 57984)
-TokenVestingTest:test_revoke_two() (gas: 69792)
-TokenVestingTest:test_revoked() (gas: 9957)
+TokenVestingTest:test_revoke_one() (gas: 76509)
+TokenVestingTest:test_revoke_revert() (gas: 54834)
+TokenVestingTest:test_revoke_two() (gas: 66064)
+TokenVestingTest:test_revoked() (gas: 9939)
 TokenVestingTest:test_start() (gas: 9694)
 ```
 
