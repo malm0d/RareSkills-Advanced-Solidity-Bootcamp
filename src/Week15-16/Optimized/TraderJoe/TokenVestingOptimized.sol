@@ -122,7 +122,6 @@ contract TokenVestingOptimized is Ownable {
         if (!revocable()) {
             revert CannotRevoke();
         }
-        
         uint256 _releasedRevoked = releasedRevoked[_token];
         uint256 _releasedAmount;
         uint256 _revoked;
@@ -134,7 +133,6 @@ contract TokenVestingOptimized is Ownable {
                 revert(0x1c, 0x04)
             }
         }
-
         uint256 currBalance = IERC20(_token).balanceOf(address(this));
         uint256 _releaseableAmount;
         assembly {
@@ -165,7 +163,6 @@ contract TokenVestingOptimized is Ownable {
                 }
             }
         }
-
         uint256 refund = currBalance - _releaseableAmount;
         //_revoked[_token] = true;
         assembly {
@@ -175,7 +172,6 @@ contract TokenVestingOptimized is Ownable {
             mstore(0x20, releasedRevoked.slot)
             sstore(keccak256(0x00, 0x40), updatedStorageValue)
         }
-
         IERC20(_token).safeTransfer(msg.sender, refund);
         emit TokenVestingRevoked(_token);
     }
@@ -184,7 +180,6 @@ contract TokenVestingOptimized is Ownable {
         if (!revocable()) {
             revert CannotRevoke();
         }
-        
         uint256 _releasedRevoked = releasedRevoked[_token];
         uint256 _revoked;
         assembly {
@@ -194,7 +189,6 @@ contract TokenVestingOptimized is Ownable {
                 revert(0x1c, 0x04)
             }
         }
-
         uint256 balance = IERC20(_token).balanceOf(address(this));
         //_revoked[_token] = true;
         assembly {
@@ -204,7 +198,6 @@ contract TokenVestingOptimized is Ownable {
             mstore(0x20, releasedRevoked.slot)
             sstore(keccak256(0x00, 0x40), updatedStorageValue)
         }
-
         IERC20(_token).safeTransfer(msg.sender, balance);
         emit TokenVestingRevoked(_token);
     }
@@ -221,7 +214,6 @@ contract TokenVestingOptimized is Ownable {
             _releasedAmount := shr(8, shl(8, _releasedRevoked))
             _revoked := shr(248, _releasedRevoked)
         }
-
         uint256 currBalance = IERC20(_token).balanceOf(address(this));
         uint256 _releaseableAmount;
         assembly {
@@ -252,7 +244,6 @@ contract TokenVestingOptimized is Ownable {
                 }
             }
         }
-
         uint256 unreleased = _releaseableAmount;
         assembly {
             if iszero(unreleased) {
@@ -268,7 +259,6 @@ contract TokenVestingOptimized is Ownable {
             mstore(0x20, releasedRevoked.slot)
             sstore(keccak256(0x00, 0x40), updatedStorageValue)
         }
-
         IERC20(_token).safeTransfer(beneficiary(), unreleased);
         emit TokensReleased(_token, unreleased);
     }
