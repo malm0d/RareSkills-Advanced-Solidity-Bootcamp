@@ -193,6 +193,10 @@ contract TokenDistributorOptimized is ReentrancyGuard {
         }
     }
 
+    function calculatePendingRewards(address _user) external view returns (uint256) {
+        
+    }
+
     /****************************************************************/
     /*                    External/Public Functions                 */
     /****************************************************************/
