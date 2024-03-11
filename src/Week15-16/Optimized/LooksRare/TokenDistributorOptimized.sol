@@ -193,13 +193,122 @@ contract TokenDistributorOptimized is ReentrancyGuard {
         }
     }
 
-    function calculatePendingRewards(address _user) external view returns (uint256) {
-        
+    function calculatePendingRewards(address _user) external view returns (uint256 pending) {
+        uint256 _NUMBER_PERIODS = NUMBER_PERIODS;
+        assembly {
+            mstore(0x00, shr(96, shl(96, _user)))
+            mstore(0x20, userInfo.slot)
+            let _userInfo := sload(keccak256(0x00, 0x40))
+            let _userAmount := and(_BITMASK_UINT128, _userInfo)
+            let _userRewardDebt := shr(128, _userInfo)
+
+            let _blockNumber := number()
+            let _packedAccTokenTotalStaked := sload(packedAccTokenTotalStaked.slot)
+            let _packedBlockInfo := sload(packedBlockInfo.slot)
+            let _totalAmountStaked := shr(128, _packedAccTokenTotalStaked)
+            let _lastRewardBlock := and(_BITMASK_UINT112, shr(112, _packedBlockInfo))
+            let _accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
+
+            if and(gt(_blockNumber, _lastRewardBlock), gt(_totalAmountStaked, 0)) {
+                let _endBlock := and(_BITMASK_UINT112, _packedBlockInfo)
+                let _rewardPerBlockForStaking := shr(128, sload(packedRewardPerBlock.slot))
+
+                let multiplier := 0
+                //if (blockNumber <= endBlock)
+                if iszero(gt(_blockNumber, _endBlock)) {
+                    multiplier := sub(_blockNumber, _lastRewardBlock)
+                }
+                //else: _blockNumber > _endBlock & _lastRewardBlock < _endBlock
+                if gt(_blockNumber, _endBlock) {
+                    if lt(_lastRewardBlock, _endBlock) {
+                        multiplier := sub(_endBlock, _lastRewardBlock)
+                    }
+                }
+                //if above two conditions dont satisfy, we get the (from >= endBlock) condition
+                //which returns multiplier as 0.
+
+                let _tokenRewardForStaking := mul(multiplier, _rewardPerBlockForStaking)
+                let adjustedCurrentPhase := shr(224, _packedBlockInfo)
+                
+                //while ((block.number > _endBlock) && (adjustedCurrentPhase < (NUMBER_PERIODS - 1)))
+                for {} and(gt(_blockNumber, _endBlock), lt(adjustedCurrentPhase, sub(_NUMBER_PERIODS, 1))) {} {
+                    //Update current phase
+                    adjustedCurrentPhase := add(adjustedCurrentPhase, 1)
+
+                    mstore(0x00, adjustedCurrentPhase)
+                    mstore(0x20, stakingPeriod.slot)
+                    let _stakingPeriodLoc := keccak256(0x00, 0x40)
+                    let _stakingPeriod := sload(_stakingPeriodLoc)
+                    let _stakingPeriodRewardPerBlockForStaking := and(_BITMASK_UINT112, _stakingPeriod)
+
+                    let prevEndBlock := _endBlock
+                    let _stakingPeriodPeriodLengthInBlock := shr(224, _stakingPeriod)
+                    _endBlock := add(prevEndBlock, _stakingPeriodPeriodLengthInBlock)
+
+                    //Calculate new multiplier
+                    let newMultiplier := 0
+                    if iszero(gt(_blockNumber, _endBlock)) {
+                        newMultiplier := sub(_blockNumber, prevEndBlock)
+                    }
+                    if gt(_blockNumber, _endBlock) {
+                        newMultiplier := _stakingPeriodPeriodLengthInBlock
+                    }
+
+                    //Adjust the reward for staking
+                    _tokenRewardForStaking := add(
+                        _tokenRewardForStaking,
+                        mul(newMultiplier, _stakingPeriodRewardPerBlockForStaking)
+                    )
+                }
+                let adjustedTokenPerShare := add(
+                    _accTokenPerShare,
+                    div(
+                        mul(_tokenRewardForStaking, PRECISION_FACTOR),
+                        _totalAmountStaked
+                    )
+                )
+                pending := sub(div(mul(_userAmount, adjustedTokenPerShare), PRECISION_FACTOR), _userRewardDebt)
+            }
+
+            pending := sub(div(mul(_userAmount, _accTokenPerShare), PRECISION_FACTOR), _userRewardDebt)
+        }
     }
+
+    // struct StakingPeriod {
+    //     uint112 rewardPerBlockForStaking;
+    //     uint112 rewardPerBlockForOthers;
+    //     uint32 periodLengthInBlock;
+    // }
+    //
+    // struct UserInfo {
+    //     uint128 amount; // Amount of staked tokens provided by user
+    //     uint128 rewardDebt; // Reward debt
+    // }
+    //
+    // //[0 - 127] (uint128) accTokenPerShare
+    // //[128 - 255] (uint128) totalAmountStaked
+    // uint256 private packedAccTokenTotalStaked;
+    //
+    // //[0 - 111] (uint112) endBlock
+    // //[112 - 223] (uint112) lastRewardBlock
+    // //[224 - 255] (uint32) currentPhase
+    // uint256 private packedBlockInfo;
+    //
+    // //[0 - 127] (uint128) rewardPerBlockForOthers
+    // //[128 - 255] (uint128) rewardPerBlockForStaking
+    // uint256 private packedRewardPerBlock;
+    //
+    // mapping(uint256 => StakingPeriod) public stakingPeriod;
+    //
+    // mapping(address => UserInfo) public userInfo;
 
     /****************************************************************/
     /*                    External/Public Functions                 */
     /****************************************************************/
+
+    function updatePool() external nonReentrant {
+        
+    }
 
     /****************************************************************/
     /*                   Internal/Private Functions                 */
