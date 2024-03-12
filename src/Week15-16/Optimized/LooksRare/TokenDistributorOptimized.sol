@@ -307,7 +307,80 @@ contract TokenDistributorOptimized is ReentrancyGuard {
     /****************************************************************/
 
     function updatePool() external nonReentrant {
+        uint256 blockNumber = block.number;
+        uint256 _packedBlockInfo = packedBlockInfo;
+        uint256 _packedAccTokenTotalStaked = packedAccTokenTotalStaked;
+        uint256 lastRewardBlock = _BITMASK_UINT112 & (_packedBlockInfo >> 112);
+        if (blockNumber <= lastRewardBlock) {
+            return;
+        }
+
+        uint256 totalAmountStaked = _packedAccTokenTotalStaked >> 128;
+        if (totalAmountStaked == 0) {
+            assembly {
+                lastRewardBlock := shl(112, blockNumber)
+                let clearedUpper := and(_BITMASK_UINT112, _packedBlockInfo)
+                let clearedLower := and(not(_BITMASK_UINT224), _packedBlockInfo)
+                let cleared := or(clearedUpper, clearedLower)
+                sstore(packedBlockInfo.slot, or(lastRewardBlock, cleared))
+            }
+            return;
+        }
         
+        uint256 _NUMBER_PERIODS = NUMBER_PERIODS;
+        assembly {
+            let endBlock := and(_BITMASK_UINT112, _packedBlockInfo)
+            let multiplier := 0
+                //if (blockNumber <= endBlock)
+                if iszero(gt(blockNumber, endBlock)) {
+                    multiplier := sub(blockNumber, lastRewardBlock)
+                }
+                //else: blockNumber > endBlock & lastRewardBlock < endBlock
+                if gt(blockNumber, endBlock) {
+                    if lt(lastRewardBlock, endBlock) {
+                        multiplier := sub(endBlock, lastRewardBlock)
+                    }
+                }
+                //if above two conditions dont satisfy, we get the (from >= endBlock) condition
+                //which returns multiplier as 0.
+
+            let _packedRewardPerBlock := sload(packedRewardPerBlock.slot)
+            let rewardPerBlockForOthers := and(_BITMASK_UINT128, _packedRewardPerBlock)
+            let rewardPerBlockForStaking := shr(128, _packedRewardPerBlock)
+            let tokenRewardForStaking := mul(multiplier, rewardPerBlockForStaking)
+            let tokenRewardForOthers := mul(multiplier, rewardPerBlockForOthers)
+
+            let currentPhase := shr(224, _packedBlockInfo)
+            //while ((block.number > endBlock) && (currentPhase < (NUMBER_PERIODS - 1)))
+            for {} and(gt(blockNumber, endBlock), lt(currentPhase, sub(_NUMBER_PERIODS, 1))) {} {
+                //Update current phase in storage (packedBlockInfo)
+                currentPhase := add(currentPhase, 1)
+                sstore(packedBlockInfo.slot, or(shl(224, currentPhase), and(_BITMAKS_UINT224, _packedBlockInfo)))
+
+                //Update rewards per block in storage (packedRewardPerBlock)
+                mstore(0x00, currentPhase)
+                mstore(0x20, stakingPeriod.slot)
+                let _stakingPeriodLoc := keccak256(0x00, 0x40)
+                let _stakingPeriod := sload(_stakingPeriodLoc)
+                let _stakingPeriodRewardPerBlockForStaking := and(_BITMASK_UINT112, _stakingPeriod)
+                let _stakingPeriodRewardPerBlockForOthers := and(_BITMASK_UINT112, shr(112, _stakingPeriod))
+                sstore(
+                    packedRewardPerBlock.slot,
+                    or(_stakingPeriodRewardPerBlockForOthers, shl(128, _stakingPeriodRewardPerBlockForStaking))
+                )
+
+                //emit NewRewardsPerBlock(uint256,uint256,uint256,uint256)
+                mstore(0x40, endBlock)
+                mstore(0x60, _stakingPeriodRewardPerBlockForStaking)
+                mstore(0x80, _stakingPeriodRewardPerBlockForOthers)
+                log2(0x40, 0x60, 0x40181eb77bccfdef1a73b669bb4290d98e2fbec678c7cf4578ae256210420e17, currentPhase)
+
+                let previousEndBlock := endBlock
+                //wip
+            }
+        }
+
+
     }
 
     /****************************************************************/
