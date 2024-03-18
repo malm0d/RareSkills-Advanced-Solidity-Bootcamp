@@ -291,21 +291,148 @@ contract TokenDistributorOptimized is ReentrancyGuard {
                 revert(0x00, 0x60) // "Deposit: Amount must be > 0"
             }
         }
-
+        //Update pool info
         uint256 _packedAccTokenTotalStaked = _updatePool();
+        looksRareToken.safeTransferFrom(msg.sender, address(this), amount);
+        assembly {
+            let _accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
+            let _totalAmountStaked := shr(128, _packedAccTokenTotalStaked)
+            let pendingRewards := 0
+            mstore(0x00, caller())
+            mstore(0x20, userInfo.slot)
+            let _userInfoLoc := keccak256(0x00, 0x40)
+            let _userInfo := sload(_userInfoLoc)
+            let _userInfoAmount := and(_BITMASK_UINT128, _userInfo)
+            let _userInfoRewardDebt := shr(128, _userInfo)
+
+            //If not new deposit, calc pending rewards (for auto-compounding)
+            if gt(_userInfoAmount, 0) {
+                pendingRewards := sub(
+                    div(mul(_userInfoAmount, _accTokenPerShare),PRECISION_FACTOR),
+                    _userInfoRewardDebt
+                )
+            }
+
+            //Update userInfo
+            _userInfoAmount := add(_userInfoAmount, add(amount, pendingRewards))
+            _userInfoRewardDebt := div(
+                mul(_userInfoAmount, _accTokenPerShare),
+                PRECISION_FACTOR
+            )
+
+            //Increase totalAmountStaked
+            _totalAmountStaked := add(_totalAmountStaked, add(amount, pendingRewards))
+
+            //Update storage
+            _packedAccTokenTotalStaked := or(
+                _accTokenPerShare,
+                shl(128, _totalAmountStaked)
+            )
+            sstore(packedAccTokenTotalStaked.slot, _packedAccTokenTotalStaked)
+            _userInfo := or(_userInfoAmount, shl(128, _userInfoRewardDebt))
+            sstore(_userInfoLoc, _userInfo)
+
+            //event Deposit(address indexed user, uint256 amount, uint256 harvestedAmount);
+            //emit Deposit(msg.sender, amount, pendingRewards);
+            mstore(0x00, amount)
+            mstore(0x20, pendingRewards)
+            log2(0x00, 0x40, 0x90890809c654f11d6e72a28fa60149770a0d11ec6c92319d6ceb2bb0a4ea1a15, caller())
+        }
     }
 
     function harvestAndCompound() external nonReentrant {
+        //Update pool info
         uint256 _packedAccTokenTotalStaked = _updatePool();
+        assembly {
+            //Calculate pending rewards
+            let _accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
+            let _totalAmountStaked := shr(128, _packedAccTokenTotalStaked)
+            mstore(0x00, caller())
+            mstore(0x20, userInfo.slot)
+            let _userInfoLoc := keccak256(0x00, 0x40)
+            let _userInfo := sload(_userInfoLoc)
+            let _userInfoAmount := and(_BITMASK_UINT128, _userInfo)
+            let _userInfoRewardDebt := shr(128, _userInfo)
 
+            let pendingRewards := sub(
+                div(mul(_userInfoAmount, _accTokenPerShare), PRECISION_FACTOR),
+                _userInfoRewardDebt
+            )
+
+            if pendingRewards {
+                //Adjust user amount for pending rewards
+                _userInfoAmount := add(_userInfoAmount, pendingRewards)
+                //Adjust total amount staked
+                _totalAmountStaked := add(_totalAmountStaked, pendingRewards)
+                //Recalc reward debt based on new user amount
+                _userInfoRewardDebt := div(
+                    mul(_userInfoAmount, _accTokenPerShare),
+                    PRECISION_FACTOR
+                )
+                //Update storage
+                _packedAccTokenTotalStaked := or(
+                    _accTokenPerShare,
+                    shl(128, _totalAmountStaked)
+                )
+                sstore(packedAccTokenTotalStaked.slot, _packedAccTokenTotalStaked)
+                _userInfo := or(_userInfoAmount, shl(128, _userInfoRewardDebt))
+                sstore(_userInfoLoc, _userInfo)
+
+                //event Compound(address indexed user, uint256 harvestedAmount);
+                //emit Compound(msg.sender, pendingRewards);
+                mstore(0x00, pendingRewards)
+                log2(0x00, 0x20, 0x169f1815ebdea059aac3bb00ec9a9594c7a5ffcb64a17e8392b5d84909a14556, caller())
+            }
+        }
     }
 
     function withdraw(uint256 amount) external nonReentrant {
-        assembly {
+        require(userInfo[msg.sender].amount >= amount, "Withdraw: Amount lower than user balance");
+        require(amount > 0, "Withdraw: Amount must be > 0");
 
+        //Update pool
+        uint256 _packedAccTokenTotalStaked = _updatePool();
+        uint256 pendingRewards;
+        assembly {
+            let _accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
+            let _totalAmountStaked := shr(128, _packedAccTokenTotalStaked)
+            mstore(0x00, caller())
+            mstore(0x20, userInfo.slot)
+            let _userInfoLoc := keccak256(0x00, 0x40)
+            let _userInfo := sload(_userInfoLoc)
+            let _userInfoAmount := and(_BITMASK_UINT128, _userInfo)
+            let _userInfoRewardDebt := shr(128, _userInfo)
+
+            //Calculate pending rewards
+            pendingRewards := sub(
+                div(mul(_userInfoAmount, _accTokenPerShare), PRECISION_FACTOR),
+                _userInfoRewardDebt
+            )
+
+            //Update userInfo
+            _userInfoAmount := sub(add(_userInfoAmount, pendingRewards), amount)
+            _userInfoRewardDebt := div(
+                mul(_userInfoAmount, _accTokenPerShare),
+                PRECISION_FACTOR
+            )
+
+            //Adjust total amount staked
+            _totalAmountStaked := sub(add(_totalAmountStaked, pendingRewards), amount)
+
+            //Update storage
+            _packedAccTokenTotalStaked := or(
+                _accTokenPerShare,
+                shl(128, _totalAmountStaked)
+            )
+            sstore(packedAccTokenTotalStaked.slot, _packedAccTokenTotalStaked)
+            _userInfo := or(_userInfoAmount, shl(128, _userInfoRewardDebt))
+            sstore(_userInfoLoc, _userInfo)
         }
 
-        uint256 _packedAccTokenTotalStaked = _updatePool();
+        //Transfer LOOKS tokens to the sender
+        looksRareToken.safeTransfer(msg.sender, amount);
+
+        emit Withdrawal(msg.sender, amount, pendingRewards);
     }
 
     function withdrawAll() external nonReentrant {
@@ -389,7 +516,8 @@ contract TokenDistributorOptimized is ReentrancyGuard {
                 _stakingPeriodRewardPerBlockForStaking := and(_BITMASK_UINT112, _stakingPeriod)
                 _stakingPeriodRewardPerBlockForOthers := and(_BITMASK_UINT112, shr(112, _stakingPeriod))
 
-                //emit NewRewardsPerBlock(uint256,uint256,uint256,uint256)
+                //event NewRewardsPerBlock(uint256 indexed currentPhase, uint256, uint256, uint256);
+                //emit NewRewardsPerBlock(currentPhase, _newStartBlock, rewardPerBlockForStaking, rewardPerBlockForOthers);
                 mstore(0x00, endBlock)
                 mstore(0x20, _stakingPeriodRewardPerBlockForStaking)
                 mstore(0x40, _stakingPeriodRewardPerBlockForOthers)
