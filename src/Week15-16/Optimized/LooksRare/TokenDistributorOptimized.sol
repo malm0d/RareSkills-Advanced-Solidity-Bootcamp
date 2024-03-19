@@ -446,6 +446,44 @@ contract TokenDistributorOptimized is ReentrancyGuard {
         }
 
         uint256 _packedAccTokenTotalStaked = _updatePool();
+        uint256 pendingRewards;
+        uint256 amountToTransfer;
+        assembly {
+            let _accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
+            let _totalAmountStaked := shr(128, _packedAccTokenTotalStaked)
+            mstore(0x00, caller())
+            mstore(0x20, userInfo.slot)
+            let _userInfoLoc := keccak256(0x00, 0x40)
+            let _userInfo := sload(_userInfoLoc)
+            let _userInfoAmount := and(_BITMASK_UINT128, _userInfo)
+            let _userInfoRewardDebt := shr(128, _userInfo)
+
+            //Calculate pending rewards
+            pendingRewards := sub(
+                div(mul(_userInfoAmount, _accTokenPerShare), PRECISION_FACTOR),
+                _userInfoRewardDebt
+            )
+
+            amountToTransfer := add(_userInfoAmount, pendingRewards)
+
+            //Adjust total amount staked
+            _totalAmountStaked := sub(_totalAmountStaked, _userInfoAmount)
+
+            //Update storage
+            _packedAccTokenTotalStaked := or(
+                _accTokenPerShare,
+                shl(128, _totalAmountStaked)
+            )
+            sstore(packedAccTokenTotalStaked.slot, _packedAccTokenTotalStaked)
+
+            //Update userInfo (amount and rewardDebt) to 0
+            sstore(_userInfoLoc, 0)
+        }
+
+        //Transfer LOOKS tokens to the sender
+        looksRareToken.safeTransfer(msg.sender, amountToTransfer);
+
+        emit Withdrawal(msg.sender, amountToTransfer, pendingRewards);
     }
     
 
