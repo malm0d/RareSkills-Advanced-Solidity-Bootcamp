@@ -3,7 +3,7 @@ pragma solidity 0.8.21;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import {console2} from "forge-std/Test.sol";
 import {ILooksRareToken} from "../../Original/LooksRare/interfaces/ILooksRareToken.sol";
 
 // //[0 - 127] (uint128) accTokenPerShare
@@ -18,14 +18,13 @@ import {ILooksRareToken} from "../../Original/LooksRare/interfaces/ILooksRareTok
 // uint256 private packedTotalStakedBlockRewards;
 
 contract TokenDistributorOptimized is ReentrancyGuard {
-    using SafeERC20 for IERC20;
     using SafeERC20 for ILooksRareToken;
 
     /****************************************************************/
     /*                            Storage                           */
     /****************************************************************/
 
-    uint256 private constant _BITMAKS_UINT224 = (1 << 224) - 1;
+    uint256 private constant _BITMASK_UINT224 = (1 << 224) - 1;
     uint256 private constant _BITMASK_UINT128 = (1 << 128) - 1;
     uint256 private constant _BITMASK_UINT112 = (1 << 112) - 1;
     uint256 private constant PRECISION_FACTOR = 10 ** 12;
@@ -269,8 +268,9 @@ contract TokenDistributorOptimized is ReentrancyGuard {
                 )
                 pending := sub(div(mul(_userAmount, adjustedTokenPerShare), PRECISION_FACTOR), _userRewardDebt)
             }
-
-            pending := sub(div(mul(_userAmount, _accTokenPerShare), PRECISION_FACTOR), _userRewardDebt)
+            if or(iszero(gt(_blockNumber, _lastRewardBlock)), iszero(_totalAmountStaked)) {
+                pending := sub(div(mul(_userAmount, _accTokenPerShare), PRECISION_FACTOR), _userRewardDebt)
+            }
         }
     }
 
@@ -293,7 +293,7 @@ contract TokenDistributorOptimized is ReentrancyGuard {
         }
         //Update pool info
         uint256 _packedAccTokenTotalStaked = _updatePool();
-        looksRareToken.safeTransferFrom(msg.sender, address(this), amount);
+        ILooksRareToken(looksRareToken).safeTransferFrom(msg.sender, address(this), amount);
         assembly {
             let _accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
             let _totalAmountStaked := shr(128, _packedAccTokenTotalStaked)
@@ -430,20 +430,13 @@ contract TokenDistributorOptimized is ReentrancyGuard {
         }
 
         //Transfer LOOKS tokens to the sender
-        looksRareToken.safeTransfer(msg.sender, amount);
+        ILooksRareToken(looksRareToken).safeTransfer(msg.sender, amount);
 
-        emit Withdrawal(msg.sender, amount, pendingRewards);
+        emit Withdraw(msg.sender, amount, pendingRewards);
     }
 
     function withdrawAll() external nonReentrant {
-        assembly {
-            if iszero(gt(amount, 0)) {
-                mstore(0x00, 0x20)
-                mstore(0x20, 0x1c)
-                mstore(0x40, 0x57697468647261773a20416d6f756e74206d757374206265203e203000000000)
-                revert(0x00, 0x60) // "Withdraw: Amount must be > 0"
-            }
-        }
+        require(userInfo[msg.sender].amount > 0, "Withdraw: Amount must be > 0");
 
         uint256 _packedAccTokenTotalStaked = _updatePool();
         uint256 pendingRewards;
@@ -481,9 +474,9 @@ contract TokenDistributorOptimized is ReentrancyGuard {
         }
 
         //Transfer LOOKS tokens to the sender
-        looksRareToken.safeTransfer(msg.sender, amountToTransfer);
+        ILooksRareToken(looksRareToken).safeTransfer(msg.sender, amountToTransfer);
 
-        emit Withdrawal(msg.sender, amountToTransfer, pendingRewards);
+        emit Withdraw(msg.sender, amountToTransfer, pendingRewards);
     }
     
 
@@ -494,22 +487,22 @@ contract TokenDistributorOptimized is ReentrancyGuard {
     function _updatePool() internal returns (uint256 _packedAccTokenTotalStaked) {
         uint256 blockNumber = block.number;
         uint256 _packedBlockInfo = packedBlockInfo;
-        uint256 lastRewardBlock = _BITMASK_UINT112 & (_packedBlockInfo >> 112);
-        if (blockNumber <= lastRewardBlock) {
-            return;
+        uint256 _lastRewardBlock = _BITMASK_UINT112 & (_packedBlockInfo >> 112);
+        if (blockNumber <= _lastRewardBlock) {
+            return 0;
         }
 
         _packedAccTokenTotalStaked = packedAccTokenTotalStaked;
-        uint256 totalAmountStaked = _packedAccTokenTotalStaked >> 128;
-        if (totalAmountStaked == 0) {
+        uint256 _totalAmountStaked = _packedAccTokenTotalStaked >> 128;
+        if (_totalAmountStaked == 0) {
             assembly {
-                lastRewardBlock := shl(112, blockNumber)
+                _lastRewardBlock := shl(112, blockNumber)
                 let clearedUpper := and(_BITMASK_UINT112, _packedBlockInfo)
                 let clearedLower := and(not(_BITMASK_UINT224), _packedBlockInfo)
                 let cleared := or(clearedUpper, clearedLower)
-                sstore(packedBlockInfo.slot, or(lastRewardBlock, cleared))
+                sstore(packedBlockInfo.slot, or(_lastRewardBlock, cleared))
             }
-            return;
+            return 0;
         }
 
         address _looksRareToken = looksRareToken;
@@ -517,37 +510,37 @@ contract TokenDistributorOptimized is ReentrancyGuard {
         uint256 _NUMBER_PERIODS = NUMBER_PERIODS;
         assembly {
             let fmp := mload(0x40)
-            let endBlock := and(_BITMASK_UINT112, _packedBlockInfo)
+            let _endBlock := and(_BITMASK_UINT112, _packedBlockInfo)
             let multiplier := 0
                 //if (blockNumber <= endBlock)
-                if iszero(gt(blockNumber, endBlock)) {
-                    multiplier := sub(blockNumber, lastRewardBlock)
+                if iszero(gt(blockNumber, _endBlock)) {
+                    multiplier := sub(blockNumber, _lastRewardBlock)
                 }
                 //else: blockNumber > endBlock & lastRewardBlock < endBlock
-                if gt(blockNumber, endBlock) {
-                    if lt(lastRewardBlock, endBlock) {
-                        multiplier := sub(endBlock, lastRewardBlock)
+                if gt(blockNumber, _endBlock) {
+                    if lt(_lastRewardBlock, _endBlock) {
+                        multiplier := sub(_endBlock, _lastRewardBlock)
                     }
                 }
                 //if above two conditions dont satisfy, we get the (from >= endBlock) condition
                 //which returns multiplier as 0.
 
             let _packedRewardPerBlock := sload(packedRewardPerBlock.slot)
-            let rewardPerBlockForOthers := and(_BITMASK_UINT128, _packedRewardPerBlock)
-            let rewardPerBlockForStaking := shr(128, _packedRewardPerBlock)
-            let tokenRewardForStaking := mul(multiplier, rewardPerBlockForStaking)
-            let tokenRewardForOthers := mul(multiplier, rewardPerBlockForOthers)
+            let _rewardPerBlockForOthers := and(_BITMASK_UINT128, _packedRewardPerBlock)
+            let _rewardPerBlockForStaking := shr(128, _packedRewardPerBlock)
+            let tokenRewardForStaking := mul(multiplier, _rewardPerBlockForStaking)
+            let tokenRewardForOthers := mul(multiplier, _rewardPerBlockForOthers)
 
-            let currentPhase := shr(224, _packedBlockInfo)
+            let _currentPhase := shr(224, _packedBlockInfo)
             let _stakingPeriodRewardPerBlockForStaking := 0
             let _stakingPeriodRewardPerBlockForOthers := 0
             //while ((block.number > endBlock) && (currentPhase < (NUMBER_PERIODS - 1)))
-            for {} and(gt(blockNumber, endBlock), lt(currentPhase, sub(_NUMBER_PERIODS, 1))) {} {
+            for {} and(gt(blockNumber, _endBlock), lt(_currentPhase, sub(_NUMBER_PERIODS, 1))) {} {
                 //Update current phase (packedBlockInfo)
-                currentPhase := add(currentPhase, 1)
+                _currentPhase := add(_currentPhase, 1)
 
                 //Update rewards per block (packedRewardPerBlock)
-                mstore(0x00, currentPhase)
+                mstore(0x00, _currentPhase)
                 mstore(0x20, stakingPeriod.slot)
                 let _stakingPeriodLoc := keccak256(0x00, 0x40)
                 let _stakingPeriod := sload(_stakingPeriodLoc)
@@ -556,23 +549,23 @@ contract TokenDistributorOptimized is ReentrancyGuard {
 
                 //event NewRewardsPerBlock(uint256 indexed currentPhase, uint256, uint256, uint256);
                 //emit NewRewardsPerBlock(currentPhase, _newStartBlock, rewardPerBlockForStaking, rewardPerBlockForOthers);
-                mstore(0x00, endBlock)
+                mstore(0x00, _endBlock)
                 mstore(0x20, _stakingPeriodRewardPerBlockForStaking)
                 mstore(0x40, _stakingPeriodRewardPerBlockForOthers)
-                log2(0x00, 0x60, 0x40181eb77bccfdef1a73b669bb4290d98e2fbec678c7cf4578ae256210420e17, currentPhase)
+                log2(0x00, 0x60, 0x40181eb77bccfdef1a73b669bb4290d98e2fbec678c7cf4578ae256210420e17, _currentPhase)
 
                 //Update endBlock (packedBlockInfo)
-                let previousEndBlock := endBlock
-                endBlock := add(endBlock, shr(224, _stakingPeriod))
+                let previousEndBlock := _endBlock
+                _endBlock := add(_endBlock, shr(224, _stakingPeriod))
 
                 //Calculate new multiplier
                 let newMultiplier := 0
-                if iszero(gt(blockNumber, endBlock)) {
+                if iszero(gt(blockNumber, _endBlock)) {
                     newMultiplier := sub(blockNumber, previousEndBlock)
                 }
-                if gt(blockNumber, endBlock) {
-                    if lt(previousEndBlock, endBlock) {
-                        newMultiplier := sub(endBlock, previousEndBlock)
+                if gt(blockNumber, _endBlock) {
+                    if lt(previousEndBlock, _endBlock) {
+                        newMultiplier := sub(_endBlock, previousEndBlock)
                     }
                 }
 
@@ -594,8 +587,8 @@ contract TokenDistributorOptimized is ReentrancyGuard {
             )
 
             //Update values for endBlock and lastRewardBlock
-            let _updatedPackedBlockInfo := or(shl(224, currentPhase), and(_BITMAKS_UINT224, _packedBlockInfo))
-            _updatedPackedBlockInfo := or(endBlock, and(not(_BITMASK_UINT112), _updatedPackedBlockInfo))
+            let _updatedPackedBlockInfo := or(shl(224, _currentPhase), and(_BITMASK_UINT224, _packedBlockInfo))
+            _updatedPackedBlockInfo := or(_endBlock, and(not(_BITMASK_UINT112), _updatedPackedBlockInfo))
 
             // Mint tokens only if token rewards for staking are not null
             if gt(tokenRewardForStaking, 0) {
@@ -607,12 +600,12 @@ contract TokenDistributorOptimized is ReentrancyGuard {
                 }
                 let mintStatus := mload(0x00)
                 if mintStatus {
-                    let accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
-                    accTokenPerShare := add(
-                        accTokenPerShare,
-                        div(mul(tokenRewardForStaking, PRECISION_FACTOR), totalAmountStaked)
+                    let _accTokenPerShare := and(_BITMASK_UINT128, _packedAccTokenTotalStaked)
+                    _accTokenPerShare := add(
+                        _accTokenPerShare,
+                        div(mul(tokenRewardForStaking, PRECISION_FACTOR), _totalAmountStaked)
                     )
-                    _packedAccTokenTotalStaked := or(accTokenPerShare, shl(128, totalAmountStaked))
+                    _packedAccTokenTotalStaked := or(_accTokenPerShare, shl(128, _totalAmountStaked))
                     sstore(packedAccTokenTotalStaked.slot, _packedAccTokenTotalStaked)
                 }
                 mstore(0x00, 0x40c10f19) //mint(address,uint256)
@@ -624,12 +617,12 @@ contract TokenDistributorOptimized is ReentrancyGuard {
             }
 
             // Update last reward block only if it wasn't updated after or at the end block
-            if iszero(gt(lastRewardBlock, endBlock)) {
-                lastRewardBlock := shl(112, blockNumber)
+            if iszero(gt(_lastRewardBlock, _endBlock)) {
+                _lastRewardBlock := shl(112, blockNumber)
                 let clearedUpper := and(_BITMASK_UINT112, _updatedPackedBlockInfo)
                 let clearedLower := and(not(_BITMASK_UINT224), _updatedPackedBlockInfo)
                 let cleared := or(clearedUpper, clearedLower)
-                _updatedPackedBlockInfo := or(lastRewardBlock, cleared)
+                _updatedPackedBlockInfo := or(_lastRewardBlock, cleared)
             }
             sstore(packedBlockInfo.slot, _updatedPackedBlockInfo)
 
