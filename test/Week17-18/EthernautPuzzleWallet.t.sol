@@ -45,7 +45,10 @@ contract EthernautPuzzleWalletTest is Test {
         bytes[] memory firstDepositCallEncoded = new bytes[](1);
         firstDepositCallEncoded[0] = abi.encodeWithSelector(PuzzleWallet.deposit.selector);
 
-        //This is the next function (multicall with `deposit` call encoded as bytes as the argument) to call in multicall
+        //First add the deposit call as the first call in multicall data. Then add the multicall call with the deposit call as
+        //the next call in the multicall data (multicall with `deposit` call encoded as bytes as the argument) to call in 
+        // multicall.
+        //`multicall(bytes[] calldata data)` takes an array of bytes as argument.
         bytes[] memory dataForMulticallEncoded = new bytes[](2);
         dataForMulticallEncoded[0] = firstDepositCallEncoded[0];
         dataForMulticallEncoded[1] = abi.encodeWithSelector(PuzzleWallet.multicall.selector, firstDepositCallEncoded);
