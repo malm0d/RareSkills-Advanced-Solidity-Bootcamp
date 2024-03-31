@@ -1,34 +1,31 @@
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.21;
 
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+// import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+// import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+// import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+// import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+// import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+// import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+// import {RewardToken} from "./RewardToken.sol";
+// import {SomeNFT} from "./SomeNFT.sol";
+
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {RewardToken} from "./RewardToken.sol";
 import {SomeNFT} from "./SomeNFT.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-/**
- * Other notes, packing in this contract can also be done with a struct instead of handling bits:
- *
- * struct StakingInfo {
- *     address owner;
- *     uint86 claimTime;
- * }
- * mapping(uint256 => StakingInfo) public stakingInfo;
- *
- * This would still be packing the data, but we use a struct to make it easier for us to handle data.
- * Through this, we can also utilize the `delete` keyword to clear the struct data.
- */
-
-/**
- * The contract becomes the owner of the NFT when it is staked
- * Users can stake NFT and receive 10 RTs per day (24h)
- * Users can unstake their NFT anytime
- */
-contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable {
+contract StakingNFT is 
+    IERC721Receiver, 
+    Ownable2StepUpgradeable, 
+    ReentrancyGuardUpgradeable, 
+    PausableUpgradeable, 
+    UUPSUpgradeable, 
+    Initializable {
     /**
      * @dev The mask of the lower 160 bits for addresses.
      * 0x00000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffff
@@ -57,9 +54,23 @@ contract StakingNFT is IERC721Receiver, Ownable2Step, ReentrancyGuard, Pausable 
     event WithdrawNFT(address indexed staker, uint256 indexed tokenId);
     event MintRewards(address indexed staker, uint256 amount);
 
-    constructor(address _someNFT, address _rewardToken) Ownable(msg.sender) {
+    function initialize(
+        address _someNFT,
+        address _rewardToken
+    ) public initializer {
         someNFTContract = SomeNFT(_someNFT);
         rewardTokenContract = RewardToken(_rewardToken);
+        __Ownable_init(msg.sender);
+        __ReentrancyGuard_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+    }
+
+    function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
     function onERC721Received(

