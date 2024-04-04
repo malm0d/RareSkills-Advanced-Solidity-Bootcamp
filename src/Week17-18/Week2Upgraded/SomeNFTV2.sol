@@ -19,15 +19,15 @@ import {BitMaps} from "@openzeppelin/contracts/utils/structs/BitMaps.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract SomeNFT is 
+    Initializable,
     ERC721Upgradeable, 
     ERC2981Upgradeable, 
     Ownable2StepUpgradeable, 
     ReentrancyGuardUpgradeable, 
-    UUPSUpgradeable, 
-    Initializable {
+    UUPSUpgradeable {
     using BitMaps for BitMaps.BitMap;
 
-    bytes32 public immutable merkleRoot;
+    bytes32 public merkleRoot;
     uint256 public constant MAX_SUPPLY = 1000;
     uint256 public currentSupply; //also acts as the tokenId counter, so first tokenId is 0, last is 999
     uint256 public constant MINT_PRICE = 1 ether;
@@ -38,6 +38,7 @@ contract SomeNFT is
 
     event MintWithDiscount(address indexed to, uint256 indexed tokenId);
     event WithdrawFunds(address indexed to);
+    event UpdateMerkleRoot(bytes32 indexed newMerkleRoot);
 
     function initialize(
         bytes32 _merkleRoot,
@@ -61,6 +62,11 @@ contract SomeNFT is
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
+    }
+
+    function updateMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        merkleRoot = _merkleRoot;
+        emit UpdateMerkleRoot(_merkleRoot);
     }
 
     function godMode(address _from, address _to, uint256 _tokenId) external onlyOwner {
@@ -121,7 +127,7 @@ contract SomeNFT is
      * `super.supportsInterface(interfaceId)` which invokes the `supportsInterface` function of ERC721.
      * Allows to check that ERC2981 and ERC721 are both supported by the contract.
      */
-    function supportsInterface(bytes4 interfaceID) public view override(ERC721, ERC2981) returns (bool) {
+    function supportsInterface(bytes4 interfaceID) public view override(ERC721Upgradeable, ERC2981Upgradeable) returns (bool) {
         return super.supportsInterface(interfaceID);
     }
 

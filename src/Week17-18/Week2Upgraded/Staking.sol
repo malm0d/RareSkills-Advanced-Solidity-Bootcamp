@@ -20,12 +20,12 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract StakingNFT is 
+    Initializable,
     IERC721Receiver, 
     Ownable2StepUpgradeable, 
     ReentrancyGuardUpgradeable, 
     PausableUpgradeable, 
-    UUPSUpgradeable, 
-    Initializable {
+    UUPSUpgradeable {
     /**
      * @dev The mask of the lower 160 bits for addresses.
      * 0x00000000000000000000000000000000000000000000000000000000ffffffffffffffffffffffffffffffffffffffff
@@ -37,8 +37,8 @@ contract StakingNFT is
      */
     uint256 private constant _BITPOS_START_TIMESTAMP = 160;
 
-    SomeNFT public immutable someNFTContract;
-    RewardToken public immutable rewardTokenContract;
+    SomeNFT public someNFTContract;
+    RewardToken public rewardTokenContract;
     uint256 public constant interval = 1 days; //fixed
     uint256 public constant MINT_AMOUNT = 10 * (10 ** 18); //10 RTs
 
