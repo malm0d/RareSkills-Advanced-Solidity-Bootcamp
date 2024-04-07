@@ -31,4 +31,14 @@ import {Utilities} from "./Utilities.sol";
 /// Exploit:
 /// In this ctf, when a new `Safe` wallet is created, we would expect `proxyCreated` to be called in the `WalletRegistry`.
 /// So this should be our focus. The `proxyCreated` function does the following:
-/// 1. 
+/// 1. Checks that the registry has enough balance to pay the token payment.
+/// 2. Checks that msg.sender is the SafeProxyFactory address that was set up in its constructor.
+/// 3. Checks that the `singleton` address used to create the `SafeProxy` is the same as the `masterCopy` address set in
+///    the constructor, which should be pointing to the same `Safe` contract.
+/// 4. Checks that the `initializer` data is the encoded data for the `setUp` function in the `Safe` contract.
+/// 5. Checks that the `Safe` wallet threshold of required confirmations for a Safe transaction is 1 (MAX_THRESHOLD).
+///    And that the number of `Safe` wallet owners is 1 (MAX_OWNERS). Only the wallet owner can execute transactions.
+/// 6. Checks that the owner of the wallet is registered as a beneficiary in the registry. This prevents the registry from 
+///    sending tokens to addresses that are not registered as beneficiaries.
+/// 7. It removes the beneficiary from the registry to prevent an address from getting more tokens than intended.
+/// 8. Finally, it sends tokens from the registry to the `Safe` wallet.
