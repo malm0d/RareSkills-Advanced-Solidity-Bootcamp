@@ -42,3 +42,31 @@ import {Utilities} from "./Utilities.sol";
 ///    sending tokens to addresses that are not registered as beneficiaries.
 /// 7. It removes the beneficiary from the registry to prevent an address from getting more tokens than intended.
 /// 8. Finally, it sends tokens from the registry to the `Safe` wallet.
+///
+/// Essentially, after `proxyCreated` is called, only a `Safe` wallet that has a beneficiary registered in the registry
+/// can receive tokens and only receive once.
+/// 
+/// Thus the exploit is to deploy a `Safe` wallet, register a beneficiary in the registry, and after the registry transfers
+/// the tokens to the `Safe` wallet, we need to transfer those tokens out of the `Safe` wallet to the attacker address.
+///
+/// The first clue is in the `SafeProxy`. The `SafeProxy` contract has a `fallback` function that forwards all calls to
+/// the `singleton` address, which is the `Safe` contract. This means that we can call any arbitrary function to the
+/// `SafeProxy`, and it will be forwarded to the `Safe` contract. So this means, ultimately, we may want to try to call
+/// a transfer like function to transfer the tokens out of the `Safe` wallet.
+///
+/// The second clue is in the `setup` function in `Safe`, where a function: `internalSetFallbackHandler` is called. The
+/// `setup` function has an argument called `fallbackHandler`. This is the address of a contract that will handle all
+/// fallback calls made to the `Safe` wallet.
+///
+/// If we step into `internalSetFallbackHandler`, we see the `FallbackManager` contract. Presumable, this contract is
+/// handling all fallback calls made to the `Safe` wallet. In the `FallbackManager` contract, `internalSetFallbackHandler` 
+/// sets the `handler` address in the storage slot `FALLBACK_HANDLER_STORAGE_SLOT`. And in the `fallback` function, we see
+/// the call: `call(gas(), handler, 0, 0, add(calldatasize(), 20), 0, 0)`. This means that if the `handler` address is set,
+/// we can call any function in the `handler` contract by calling `SafeProxy` and the function will be forwarded to the
+/// `handler` contract (as a fallback call).
+///
+/// So the exploit can succeed if when constructing the `initializer` calldata, we pass in the address of the token contract
+/// as the `fallbackHandler` in the `setup` function. This way, when`SafeProxyFactory.createProxyWithCallback` is called
+/// with that `initializer` calldata, the `Safe` wallet will be created with the `handler` address set to the token contract.
+/// And finally, we call just make a ERC20.transfer call to the `SafeProxy`, which will then be forwarded to the `Safe` wallet,
+/// and then to the `handler` contract, which is the token contract.
