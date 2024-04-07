@@ -2,3 +2,4 @@
 @openzeppelin/=lib/openzeppelin-contracts/
 
 @solady/=lib/solady/
+@gnosis/=lib/safe-contracts/
