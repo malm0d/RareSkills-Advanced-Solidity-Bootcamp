@@ -1,120 +1,120 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.21;
+// // SPDX-License-Identifier: MIT
+// pragma solidity 0.8.21;
 
-//forge install safe-global/safe-contracts to install gnosis safe-contracts
+// //forge install safe-global/safe-contracts to install gnosis safe-contracts
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Safe} from "@gnosis/contracts/Safe.sol";
-import {IProxyCreationCallback} from "@gnosis/contracts/proxies/IProxyCreationCallback.sol";
-import {SafeProxy} from "@gnosis/contracts/proxies/SafeProxy.sol";
+// import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+// import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import {Safe} from "@gnosis/contracts/Safe.sol";
+// import {IProxyCreationCallback} from "@gnosis/contracts/proxies/IProxyCreationCallback.sol";
+// import {SafeProxy} from "@gnosis/contracts/proxies/SafeProxy.sol";
 
-/**
- * @title WalletRegistry
- * @notice A registry for Gnosis Safe wallets.
- *            When known beneficiaries deploy and register their wallets, the registry sends some Damn Valuable Tokens to the wallet.
- * @dev The registry has embedded verifications to ensure only legitimate Gnosis Safe wallets are stored.
- * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
- */
+// /**
+//  * @title WalletRegistry
+//  * @notice A registry for Gnosis Safe wallets.
+//  *            When known beneficiaries deploy and register their wallets, the registry sends some Damn Valuable Tokens to the wallet.
+//  * @dev The registry has embedded verifications to ensure only legitimate Gnosis Safe wallets are stored.
+//  * @author Damn Vulnerable DeFi (https://damnvulnerabledefi.xyz)
+//  */
 
- contract WalletRegistry is IProxyCreationCallback, Ownable {
-    uint256 private constant MAX_OWNERS = 1;
-    uint256 private constant MAX_THRESHOLD = 1;
-    uint256 private constant TOKEN_PAYMENT = 10 ether; // 10 * 10 ** 18
+//  contract WalletRegistry is IProxyCreationCallback, Ownable {
+//     uint256 private constant MAX_OWNERS = 1;
+//     uint256 private constant MAX_THRESHOLD = 1;
+//     uint256 private constant TOKEN_PAYMENT = 10 ether; // 10 * 10 ** 18
 
-    address public immutable masterCopy;
-    address public immutable walletFactory;
-    IERC20 public immutable token;
+//     address public immutable masterCopy;
+//     address public immutable walletFactory;
+//     IERC20 public immutable token;
 
-    mapping(address => bool) public beneficiaries;
+//     mapping(address => bool) public beneficiaries;
 
-    // owner => wallet
-    mapping(address => address) public wallets;
+//     // owner => wallet
+//     mapping(address => address) public wallets;
 
-    error AddressZeroIsNotAllowed();
-    error NotEnoughFundsToPay();
-    error CallerMustBeFactory();
-    error FakeMasterCopyUsed();
-    error WrongInitialization();
-    error InvalidThreshold();
-    error InvalidNumberOfOwners();
-    error OwnerIsNotRegisteredAsBeneficiary();
+//     error AddressZeroIsNotAllowed();
+//     error NotEnoughFundsToPay();
+//     error CallerMustBeFactory();
+//     error FakeMasterCopyUsed();
+//     error WrongInitialization();
+//     error InvalidThreshold();
+//     error InvalidNumberOfOwners();
+//     error OwnerIsNotRegisteredAsBeneficiary();
 
-    constructor(
-        address masterCopyAddress,
-        address walletFactoryAddress,
-        address tokenAddress,
-        address[] memory initialBeneficiaries
-    ) Ownable(msg.sender) {
-        if (masterCopyAddress == address(0)) revert AddressZeroIsNotAllowed();
-        if (walletFactoryAddress == address(0)) {
-            revert AddressZeroIsNotAllowed();
-        }
+//     constructor(
+//         address masterCopyAddress,
+//         address walletFactoryAddress,
+//         address tokenAddress,
+//         address[] memory initialBeneficiaries
+//     ) Ownable(msg.sender) {
+//         if (masterCopyAddress == address(0)) revert AddressZeroIsNotAllowed();
+//         if (walletFactoryAddress == address(0)) {
+//             revert AddressZeroIsNotAllowed();
+//         }
 
-        masterCopy = masterCopyAddress;
-        walletFactory = walletFactoryAddress;
-        token = IERC20(tokenAddress);
+//         masterCopy = masterCopyAddress;
+//         walletFactory = walletFactoryAddress;
+//         token = IERC20(tokenAddress);
 
-        for (uint256 i = 0; i < initialBeneficiaries.length; i++) {
-            addBeneficiary(initialBeneficiaries[i]);
-        }
-    }
+//         for (uint256 i = 0; i < initialBeneficiaries.length; i++) {
+//             addBeneficiary(initialBeneficiaries[i]);
+//         }
+//     }
 
-    function addBeneficiary(address beneficiary) public onlyOwner {
-        beneficiaries[beneficiary] = true;
-    }
+//     function addBeneficiary(address beneficiary) public onlyOwner {
+//         beneficiaries[beneficiary] = true;
+//     }
 
-    function _removeBeneficiary(address beneficiary) private {
-        beneficiaries[beneficiary] = false;
-    }
+//     function _removeBeneficiary(address beneficiary) private {
+//         beneficiaries[beneficiary] = false;
+//     }
 
-    /**
-     * @notice Function executed when user creates a Gnosis Safe wallet via GnosisSafeProxyFactory::createProxyWithCallback
-     *          setting the registry's address as the callback.
-     */
-    function proxyCreated(SafeProxy proxy, address singleton, bytes calldata initializer, uint256)
-        external
-        override
-    {
-        // Make sure we have enough DVT to pay
-        if (token.balanceOf(address(this)) < TOKEN_PAYMENT) {
-            revert NotEnoughFundsToPay();
-        }
+//     /**
+//      * @notice Function executed when user creates a Gnosis Safe wallet via GnosisSafeProxyFactory::createProxyWithCallback
+//      *          setting the registry's address as the callback.
+//      */
+//     function proxyCreated(SafeProxy proxy, address singleton, bytes calldata initializer, uint256)
+//         external
+//         override
+//     {
+//         // Make sure we have enough DVT to pay
+//         if (token.balanceOf(address(this)) < TOKEN_PAYMENT) {
+//             revert NotEnoughFundsToPay();
+//         }
 
-        address payable walletAddress = payable(proxy);
+//         address payable walletAddress = payable(proxy);
 
-        // Ensure correct factory and master copy
-        if (msg.sender != walletFactory) revert CallerMustBeFactory();
-        if (singleton != masterCopy) revert FakeMasterCopyUsed();
+//         // Ensure correct factory and master copy
+//         if (msg.sender != walletFactory) revert CallerMustBeFactory();
+//         if (singleton != masterCopy) revert FakeMasterCopyUsed();
 
-        // Ensure initial calldata was a call to `GnosisSafe::setup`
-        if (bytes4(initializer[:4]) != Safe.setup.selector) {
-            revert WrongInitialization();
-        }
+//         // Ensure initial calldata was a call to `GnosisSafe::setup`
+//         if (bytes4(initializer[:4]) != Safe.setup.selector) {
+//             revert WrongInitialization();
+//         }
 
-        // Ensure wallet initialization is the expected
-        if (Safe(walletAddress).getThreshold() != MAX_THRESHOLD) {
-            revert InvalidThreshold();
-        }
+//         // Ensure wallet initialization is the expected
+//         if (Safe(walletAddress).getThreshold() != MAX_THRESHOLD) {
+//             revert InvalidThreshold();
+//         }
 
-        if (Safe(walletAddress).getOwners().length != MAX_OWNERS) {
-            revert InvalidNumberOfOwners();
-        }
+//         if (Safe(walletAddress).getOwners().length != MAX_OWNERS) {
+//             revert InvalidNumberOfOwners();
+//         }
 
-        // Ensure the owner is a registered beneficiary
-        address walletOwner = Safe(walletAddress).getOwners()[0];
+//         // Ensure the owner is a registered beneficiary
+//         address walletOwner = Safe(walletAddress).getOwners()[0];
 
-        if (!beneficiaries[walletOwner]) {
-            revert OwnerIsNotRegisteredAsBeneficiary();
-        }
+//         if (!beneficiaries[walletOwner]) {
+//             revert OwnerIsNotRegisteredAsBeneficiary();
+//         }
 
-        // Remove owner as beneficiary
-        _removeBeneficiary(walletOwner);
+//         // Remove owner as beneficiary
+//         _removeBeneficiary(walletOwner);
 
-        // Register the wallet under the owner's address
-        wallets[walletOwner] = walletAddress;
+//         // Register the wallet under the owner's address
+//         wallets[walletOwner] = walletAddress;
 
-        // Pay tokens to the newly created wallet
-        token.transfer(walletAddress, TOKEN_PAYMENT);
-    }
-}
+//         // Pay tokens to the newly created wallet
+//         token.transfer(walletAddress, TOKEN_PAYMENT);
+//     }
+// }
