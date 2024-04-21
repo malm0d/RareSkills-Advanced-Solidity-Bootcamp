@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@openzeppelin/merkle-tree": "^1.0.5"
+    "@openzeppelin/merkle-tree": "^1.0.5",
+    "ethers": "^6.12.0"
   }
 }
