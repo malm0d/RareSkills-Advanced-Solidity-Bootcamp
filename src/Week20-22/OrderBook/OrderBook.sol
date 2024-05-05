@@ -16,8 +16,11 @@ contract OrderBook is EIP712, Nonces {
     error InvalidSignatureLength();
     error OrderMismatch();
     error PermitOrderMismatch();
+    error PriceMismatch();
 
     event MatchedOrderExecuted();
+
+    uint256 internal constant WAD = 1e18;
 
     IERC20 public tokenA;
     IERC20 public tokenB;
@@ -27,17 +30,14 @@ contract OrderBook is EIP712, Nonces {
      * `maker`: the address that created the order
      * `deadline`: the timestamp after which the order is invalid
      * `nonce`: maker's nonce
-     *
-     * Every Order will have a sell and buy amount, since
-     * since an order is a trade of two tokens.
      */
     struct Order {
         address maker;
         uint256 deadline;
         address sellToken;
         address buyToken;
-        uint256 sellAmount;
-        uint256 buyAmount;
+        uint256 sellTokenAmount;
+        uint256 buyTokenAmount;
         uint256 nonce;
     }
 
@@ -56,7 +56,7 @@ contract OrderBook is EIP712, Nonces {
     ///https://eips.ethereum.org/EIPS/eip-712
     //keccak256(bytes(String))?
     bytes32 private constant ORDER_TYPEHASH = keccak256(
-        "Order(address maker,uint256 deadline,address sellToken,address buyToken,uint256 sellAmount,uint256 buyAmount,uint256 nonce)"
+        "Order(address maker,uint256 deadline,address sellToken,address buyToken,uint256 sellTokenAmount,uint256 buyTokenAmount,uint256 nonce)"
     );
 
     constructor(
@@ -96,7 +96,7 @@ contract OrderBook is EIP712, Nonces {
         _chcekPermitAndOrderMatch(sellPermit, sellOrder);
         _chcekPermitAndOrderMatch(buyPermit, buyOrder);
 
-        //Execute the permits
+        //Execute the permit for sell order
         _permitERC20(
             sellPermit.tokenAddr, 
             sellPermit.owner, 
@@ -107,6 +107,7 @@ contract OrderBook is EIP712, Nonces {
             sellPermit.s
         );
 
+        //Execute the permit for buy order
         _permitERC20(
             buyPermit.tokenAddr, 
             buyPermit.owner, 
@@ -117,40 +118,81 @@ contract OrderBook is EIP712, Nonces {
             buyPermit.s
         );
 
-        //Move tokens from both parties
+        //Trade tokens from both parties
         _executeTrade(sellOrder, buyOrder);   
 
         emit MatchedOrderExecuted();
     }
 
+    ///@dev When trade executes, sell order maker sells token A and buys token B,
+    ///which also means the buy order maker buys token A and sells token B.
+    ///Transfer flow:
+    ///  Token A: Sell order maker -> Buy order maker (amountA)
+    ///  Token B: Buy order maker -> Sell order maker (amountB)
     function _executeTrade(
-        Order memory orderA,
-        Order memory orderB
+        Order memory sellOrder,
+        Order memory buyOrder
     ) internal {
-        //Calculate the amount to swap
-        uint256 amountTokenA;
-        uint256 amountTokenB;
-        {
-            //If Order A is willing to sell more than Order B is willing to buy, then we swap
-            //based on the amount Order B is willing to buy (the smaller buy amount), so Order B
-            //does not exceed its stated buy amount.
-            //
-            //Else, if Order A is willing to sell less than or equal to Order B is willing to buy,
-            //then we swap based on the amount Order A is willing to buy (the larger buy amount), so
-            //Order A does not exceed its stated buy amount.
-            if (orderA.sellAmount > orderB.buyAmount) {
-                amountTokenB = orderB.buyAmount;     //the max Order B is willing to buy
-                amountTokenA = orderB.sellAmount;    //the amount Order B is willing to sell
-            } else {
-                amountTokenA = orderA.buyAmount;     //the max Order A is willing to buy
-                amountTokenB = orderA.sellAmount;    //the amount Order A is willing to sell
-            }
+        //Price of an order is the ratio of the exchange between the two tokens.
+        //Sell price == how many of sell token to get 1 buy token.
+        //Buy price == how many of buy token to get 1 sell token.
+        uint256 sellPrice = divWad(sellOrder.sellTokenAmount, sellOrder.buyTokenAmount);
+        uint256 buyPrice = divWad(buyOrder.buyTokenAmount, buyOrder.sellTokenAmount);
+
+        //The sellPrice cannot be greater than the buyPrice, i.e: the price seller
+        //is willing to sell cannot exceed the price buyer is willing to pay.
+        if (sellPrice > buyPrice) {
+            revert PriceMismatch();
+        }
+
+        //Calculate max possible amount of token A the sell order can trade (sell price * sell amount)
+        //Seller wants to sell.
+        uint256 maxAmountA = mulWad(sellPrice, sellOrder.sellTokenAmount);
+
+        //Calculate the max possible amount of token B the buy order can trade (buy amount / buy price)
+        //Buyer wants to buy
+        uint256 maxAmountB = divWad(buyOrder.buyTokenAmount, buyPrice);
+
+        //Determine actual amounts to be traded
+        uint256 amountA;
+        uint256 amountB;
+
+        ///1. If the max amount of sell tokens that seller wants to sell is <= the total amount of sell tokens
+        //that the buyer wants to buy, and the max amount of buy tokens that the buyer wants to buy is <= the
+        //total amount of buy tokens that the seller wants to sell, then both `maxAmountA` and `maxAmountB` are
+        //within order limits.
+        if (maxAmountA <= buyOrder.sellTokenAmount && maxAmountB <= sellOrder.sellTokenAmount) {
+            amountA = maxAmountA;
+            amountB = maxAmountB;
+        
+        ///2. The buyer accepts the amount in `maxAmountB`, but the seller wants to sell more token A than 
+        ///buyer is willing to buy; then we need to adjust `amountA` to match buyer's capacity to buy, i.e. 
+        ///adjust amount for sell order (token A) based on the buyPrice and amount buyer agreed (token B).
+        } else if (maxAmountA > buyOrder.sellTokenAmount && maxAmountB <= sellOrder.sellTokenAmount) {
+            amountB = maxAmountB;
+            amountA = mulWad(buyPrice, amountB); // Recalculate amountA based on buyPrice and the acceptable amountB
+        
+        ///3. The seller accepts the amount in `maxAmountA`, but the max amount of buy tokens that the buyer
+        ///wants to buy > the total amount of buy tokens that the seller is able to sell, then we need to adjust
+        ///`amountB` to match seller's capacity to sell, i.e. adjust amount for buy order (token B) based on the
+        ///sellPrice and amount seller agreed (oken A).
+        } else if (maxAmountA <= buyOrder.sellTokenAmount && maxAmountB > sellOrder.sellTokenAmount) {
+            amountA = maxAmountA;
+            amountB = divWad(amountA, sellPrice); // Recalculate amountB based on sellPrice and the acceptable amountA
+        
+        ///4. If both the seller and buyer want to trade more than the total amount of tokens they have, then
+        ///just use the maximum amount of tokens they can trade.
+        } else {
+            amountA = buyOrder.sellTokenAmount;
+            amountB = sellOrder.sellTokenAmount;
         }
 
         //Transfer tokens
-        tokenA.safeTransferFrom(orderA.maker, orderB.maker, amountTokenB);
+        IERC20(sellOrder.sellToken).safeTransferFrom(sellOrder.maker, buyOrder.maker, amountA);
+        IERC20(buyOrder.buyToken).safeTransferFrom(buyOrder.maker, sellOrder.maker, amountB);
     }
 
+    ///@dev EIP712: https://eips.ethereum.org/EIPS/eip-712
     function _validateSignature(
         Order memory _order,
         bytes32 r,
@@ -168,8 +210,8 @@ contract OrderBook is EIP712, Nonces {
             _order.deadline,
             _order.sellToken,
             _order.buyToken,
-            _order.sellAmount,
-            _order.buyAmount,
+            _order.sellTokenAmount,
+            _order.buyTokenAmount,
             _useNonce(_order.maker)
         ));
 
@@ -186,6 +228,7 @@ contract OrderBook is EIP712, Nonces {
         }
     }
 
+    ///@dev split the signature into `r`, `s` and `v`
     function _splitSignature(
         bytes memory _signature
     ) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
@@ -224,7 +267,7 @@ contract OrderBook is EIP712, Nonces {
     }
 
     ///@dev the `sellToken` of one order must be the `buyToken` of the other
-    //and the `sellAmount` and `buyAmount` must be more than zero (cannot buy and sell for nothing).
+    //and the `sellTokenAmount` and `buyTokenAmount` must be more than zero (cannot buy and sell for nothing).
     //Also need to check the raio so that a malicious actor cannot create and execute orders with
     //imbalanced ratios, causing one party to receive significantly more tokens for the trade.
     function _checkOrdersAndRatio (
@@ -233,21 +276,21 @@ contract OrderBook is EIP712, Nonces {
     ) internal pure {
         require(orderA.sellToken == orderB.buyToken, "Wrong token pair");
         require(orderA.buyToken == orderB.sellToken, "Wrong token pair");
-        require(orderA.sellAmount > 0, "Zero sell amount");
-        require(orderB.buyAmount > 0, "Zero buy amount");
-        require(orderA.buyAmount > 0, "Zero buy amount");
-        require(orderB.sellAmount > 0, "Zero sell amount");
+        require(orderA.sellTokenAmount > 0, "Zero sell amount");
+        require(orderB.buyTokenAmount > 0, "Zero buy amount");
+        require(orderA.buyTokenAmount > 0, "Zero buy amount");
+        require(orderB.sellTokenAmount > 0, "Zero sell amount");
 
         //If sell and buy amounts for first order is equal, then the second must follow suit
-        if (orderA.sellAmount == orderA.buyAmount) {
-            require(orderB.sellAmount == orderB.buyAmount, "Ratio mismatch");
-        } else if (orderA.sellAmount > orderA.buyAmount) {
-            uint256 ratioOrderA = orderA.sellAmount / orderA.buyAmount;
-            uint256 ratioOrderB = orderB.buyAmount / orderB.sellAmount;
+        if (orderA.sellTokenAmount == orderA.buyTokenAmount) {
+            require(orderB.sellTokenAmount == orderB.buyTokenAmount, "Ratio mismatch");
+        } else if (orderA.sellTokenAmount > orderA.buyTokenAmount) {
+            uint256 ratioOrderA = orderA.sellTokenAmount / orderA.buyTokenAmount;
+            uint256 ratioOrderB = orderB.buyTokenAmount / orderB.sellTokenAmount;
             require(ratioOrderA == ratioOrderB, "Ratio mismatch");
         } else {
-            uint256 ratioOrderA = orderA.buyAmount / orderA.sellAmount;
-            uint256 ratioOrderB = orderB.sellAmount / orderB.buyAmount;
+            uint256 ratioOrderA = orderA.buyTokenAmount / orderA.sellTokenAmount;
+            uint256 ratioOrderB = orderB.sellTokenAmount / orderB.buyTokenAmount;
             require(ratioOrderA == ratioOrderB, "Ratio mismatch");
         }
     }
@@ -271,5 +314,33 @@ contract OrderBook is EIP712, Nonces {
             r,
             s
         );
+    }
+
+    /// @dev `mulWad` from Solady
+    /// @dev Equivalent to `(x * y) / WAD` rounded down.
+    function mulWad(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Equivalent to `require(y == 0 || x <= type(uint256).max / y)`.
+            if mul(y, gt(x, div(not(0), y))) {
+                mstore(0x00, 0xbac65e5b) // `MulWadFailed()`.
+                revert(0x1c, 0x04)
+            }
+            z := div(mul(x, y), WAD)
+        }
+    }
+
+    /// @dev `divWad` from Solady
+    /// @dev Equivalent to `(x * WAD) / y` rounded down.
+    function divWad(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        /// @solidity memory-safe-assembly
+        assembly {
+            // Equivalent to `require(y != 0 && (WAD == 0 || x <= type(uint256).max / WAD))`.
+            if iszero(mul(y, iszero(mul(WAD, gt(x, div(not(0), WAD)))))) {
+                mstore(0x00, 0x7c5f487d) // `DivWadFailed()`.
+                revert(0x1c, 0x04)
+            }
+            z := div(mul(x, WAD), y)
+        }
     }
 }
