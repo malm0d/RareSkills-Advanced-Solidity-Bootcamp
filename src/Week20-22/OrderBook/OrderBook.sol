@@ -49,7 +49,6 @@ contract OrderBook is EIP712, Nonces {
         uint8 v;
         bytes32 r;
         bytes32 s;
-
     }
 
     ///@dev EIP-712 `typehash`: keccak256(encodeType(typeOf(struct)))
