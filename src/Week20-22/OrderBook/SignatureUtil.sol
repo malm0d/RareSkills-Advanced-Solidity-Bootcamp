@@ -53,7 +53,7 @@ contract SignatureUtil is Test {
         Order memory _order,
         uint256 _privateKey
     ) public pure returns (bytes memory) {
-        bytes32 msgHash = hashAsMessage(_domainSeparator, _order);
+        bytes32 msgHash = hashOrderAsMessage(_domainSeparator, _order);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, msgHash);
 
         //return concatenation
@@ -88,7 +88,7 @@ contract SignatureUtil is Test {
         Permit memory _permit,
         uint256 _privateKey
     ) public pure returns (bytes memory) {
-        bytes32 msgHash = hashAsMessage(_domainSeparator, _permit);
+        bytes32 msgHash = hashPermitAsMessage(_domainSeparator, _permit);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, msgHash);
 
         //return concatenation
