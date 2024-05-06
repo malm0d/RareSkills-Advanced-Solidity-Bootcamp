@@ -3,7 +3,7 @@ pragma solidity 0.8.21;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Permit} from "src/Week20-22/OrderBook/PermitToken.sol";
-import {Order, OrderBook} from "src/Week20-22/OrderBook/OrderBook.sol";
+import {Order} from "src/Week20-22/OrderBook/OrderBook.sol";
 
 contract SignatureUtil is Test {
 
