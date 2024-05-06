@@ -8,6 +8,32 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+* @dev 
+* `maker`: the address that created the order
+* `deadline`: the timestamp after which the order is invalid
+* `nonce`: maker's nonce
+*/
+struct Order {
+    address maker;
+    uint256 deadline;
+    address sellToken;
+    address buyToken;
+    uint256 sellTokenAmount;
+    uint256 buyTokenAmount;
+    uint256 nonce;
+}
+
+struct Permit {
+    address tokenAddr;
+    address owner; //`owner` of the tokens
+    uint256 value;
+    uint256 deadline;
+    uint8 v;
+    bytes32 r;
+    bytes32 s;
+}
+
 contract OrderBook is EIP712, Nonces {
     using SafeERC20 for IERC20;
 
@@ -24,32 +50,6 @@ contract OrderBook is EIP712, Nonces {
 
     IERC20 public immutable tokenA;
     IERC20 public immutable tokenB;
-
-    /**
-     * @dev 
-     * `maker`: the address that created the order
-     * `deadline`: the timestamp after which the order is invalid
-     * `nonce`: maker's nonce
-     */
-    struct Order {
-        address maker;
-        uint256 deadline;
-        address sellToken;
-        address buyToken;
-        uint256 sellTokenAmount;
-        uint256 buyTokenAmount;
-        uint256 nonce;
-    }
-
-    struct Permit {
-        address tokenAddr;
-        address owner; //`owner` of the tokens
-        uint256 value;
-        uint256 deadline;
-        uint8 v;
-        bytes32 r;
-        bytes32 s;
-    }
 
     ///@dev EIP-712 `typehash`: keccak256(encodeType(typeOf(struct)))
     ///https://eips.ethereum.org/EIPS/eip-712
@@ -202,7 +202,7 @@ contract OrderBook is EIP712, Nonces {
             revert SignatureExpired();
         }
 
-        //EIP712: `encodeData(struct)`
+        //EIP712: keccak256(abi.encode(typeHash, encodeData(struct)))
         bytes32 structHash = keccak256(abi.encode(
             ORDER_TYPEHASH,
             _order.maker,
@@ -216,7 +216,7 @@ contract OrderBook is EIP712, Nonces {
 
         //EIP712: hash of fully encoded message
         //Using `_hashTypedDataV4` from O.Z will calculate the hash of the fully encoded message
-        //according to standard with: "\x19\x01" ‖ domainSeparator ‖ hashStruct(message)
+        //according to standard with: "\x19\x01" ‖ domainSeparator ‖ structHash
         bytes32 hash = _hashTypedDataV4(structHash);
 
         //Recover Signer address with ECDSA (O.Z.)
