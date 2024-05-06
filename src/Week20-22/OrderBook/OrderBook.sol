@@ -22,8 +22,8 @@ contract OrderBook is EIP712, Nonces {
 
     uint256 internal constant WAD = 1e18;
 
-    IERC20 public tokenA;
-    IERC20 public tokenB;
+    IERC20 public immutable tokenA;
+    IERC20 public immutable tokenB;
 
     /**
      * @dev 
