@@ -48,8 +48,8 @@ contract OrderBook is EIP712, Nonces {
 
     uint256 internal constant WAD = 1e18;
 
-    IERC20 public immutable tokenA;
-    IERC20 public immutable tokenB;
+    address public immutable tokenA;
+    address public immutable tokenB;
 
     ///@dev EIP-712 `typehash`: keccak256(encodeType(typeOf(struct)))
     ///https://eips.ethereum.org/EIPS/eip-712
@@ -62,8 +62,8 @@ contract OrderBook is EIP712, Nonces {
         address _tokenA,
         address _tokenB
     ) EIP712("OrderBook", "1") {
-        tokenA = IERC20(_tokenA);
-        tokenB = IERC20(_tokenB);
+        tokenA = _tokenA;
+        tokenB = _tokenB;
     }
 
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
@@ -86,6 +86,9 @@ contract OrderBook is EIP712, Nonces {
             (bytes32 r_Buy, bytes32 s_Buy, uint8 v_Buy) = _splitSignature(buySignature);
             _validateSignature(buyOrder, r_Buy, s_Buy, v_Buy);
         }
+
+        //Check tokens
+        _validateTokens(sellPermit, sellOrder, buyPermit, buyOrder);
 
         //Check orders and ratio
         _checkOrdersAndRatio(sellOrder, buyOrder);
@@ -262,6 +265,33 @@ contract OrderBook is EIP712, Nonces {
     ) internal pure {
         if (permit.owner != order.maker) {
             revert PermitOrderMismatch();
+        }
+    }
+
+    ///@dev Check the address of the tokens being traded in the permit and order
+    function _validateTokens(
+        Permit memory sellPermit,
+        Order memory sellOrder,
+        Permit memory buyPermit,
+        Order memory buyOrder
+    ) internal view {
+        //Permit and Order tokens must match.
+        require(sellPermit.tokenAddr == sellOrder.sellToken, "Token mismatch");
+        require(buyPermit.tokenAddr == buyOrder.buyToken, "Token mismatch");
+
+        //Check if tokens being traded are either tokenA or tokenB.
+        //If sell order sells tokenA, then buy order must buy tokenA.
+        //If sell order sells tokenB, then buy order must buy tokenB.
+        if (sellOrder.sellToken == tokenA) {
+            require(buyOrder.buyToken == tokenA, "Token mismatch: buyOrder");
+            require(sellOrder.buyToken == tokenB, "Token mismatch: sellOrder");
+            require(buyOrder.sellToken == tokenB, "Token mismatch: buyOrder");
+        } else if (sellOrder.sellToken == tokenB) {
+            require(buyOrder.buyToken == tokenB, "Token mismatch: buyOrder");
+            require(sellOrder.buyToken == tokenA, "Token mismatch: sellOrder");
+            require(buyOrder.sellToken == tokenA, "Token mismatch: buyOrder");
+        } else {
+            revert OrderMismatch();
         }
     }
 
