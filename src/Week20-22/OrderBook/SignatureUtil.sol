@@ -7,6 +7,8 @@ import {Order} from "src/Week20-22/OrderBook/OrderBook.sol";
 
 contract SignatureUtil is Test {
 
+    error InvalidSignatureLength();
+
     /// We dont need to cast with `bytes` if we are using a string literal as in:
     /// bytes32 private constant ORDER_TYPEHASH = keccak256("Order(address maker,...,uint256 nonce)");
     /// Also we are dealing only with native types. Refer to RS notes or the following example at
@@ -16,6 +18,31 @@ contract SignatureUtil is Test {
     string internal constant _PERMIT_STRING = "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)";
     bytes32 internal constant _ORDER_TYPEHASH = keccak256(bytes(_ORDER_STRING));
     bytes32 internal constant _PERMIT_TYPEHASH = keccak256(bytes(_PERMIT_STRING));
+
+    ///@dev split the signature into `r`, `s` and `v`
+    function splitSignature(
+        bytes memory _signature
+    ) public pure returns (bytes32 r, bytes32 s, uint8 v) {
+        if (_signature.length != 65) {
+            revert InvalidSignatureLength();
+        }
+
+        //First 32 bytes is the length of the bytes array.
+        //So: add(_signature, 0x20) = pointer of signature + 32 bytes,
+        //i.e. the start of `r` (and the actual signature itself).
+        assembly {
+            //First 32 bytes after length prefix is `r`.
+            //Next 32 bytes is `s`.
+            //Last byte is `v`.
+            r := mload(add(_signature, 0x20))
+            s := mload(add(_signature, 0x40))
+
+            //Extract the most significant byte of the last 32 bytes (`v`)
+            ///byte(n, x): extract the nth byte of x (n is the position of the byte in x)
+            //where 0 is the most significant byte (leftmost)
+            v := byte(0, mload(add(_signature, 0x60)))
+        }
+    }
 
     /***********************************************************/
     /*                          Order                          */
@@ -94,5 +121,4 @@ contract SignatureUtil is Test {
         //return concatenation
         return bytes.concat(r, s, bytes1(v));
     }
-
 }

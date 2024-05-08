@@ -24,7 +24,7 @@ struct Order {
     uint256 nonce;
 }
 
-struct Permit {
+struct PermitWithVRS {
     address tokenAddr;
     address owner; //`owner` of the tokens
     uint256 value;
@@ -71,10 +71,10 @@ contract OrderBook is EIP712, Nonces {
     }
 
     function executeMatchedOrder(
-        Permit memory sellPermit,
+        PermitWithVRS memory sellPermit,
         Order memory sellOrder,
         bytes memory sellSignature,
-        Permit memory buyPermit,
+        PermitWithVRS memory buyPermit,
         Order memory buyOrder,
         bytes memory buySignature
     ) external {
@@ -260,7 +260,7 @@ contract OrderBook is EIP712, Nonces {
     ///when an order(trade) is created. In this context, the `spender` is the `OrderBook` contract.
     ///Ensures that the address that created the permit is dealing with an order it created.
     function _chcekPermitAndOrderMatch (
-        Permit memory permit,
+        PermitWithVRS memory permit,
         Order memory order
     ) internal pure {
         if (permit.owner != order.maker) {
@@ -270,9 +270,9 @@ contract OrderBook is EIP712, Nonces {
 
     ///@dev Check the address of the tokens being traded in the permit and order
     function _validateTokens(
-        Permit memory sellPermit,
+        PermitWithVRS memory sellPermit,
         Order memory sellOrder,
-        Permit memory buyPermit,
+        PermitWithVRS memory buyPermit,
         Order memory buyOrder
     ) internal view {
         //Permit and Order tokens must match.
