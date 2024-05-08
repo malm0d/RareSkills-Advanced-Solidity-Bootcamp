@@ -43,6 +43,7 @@ contract OrderBook is EIP712, Nonces {
     error OrderMismatch();
     error PermitOrderMismatch();
     error PriceMismatch();
+    error InvalidToken();
 
     event MatchedOrderExecuted();
 
@@ -291,7 +292,7 @@ contract OrderBook is EIP712, Nonces {
             require(sellOrder.buyToken == tokenA, "Token mismatch: sellOrder");
             require(buyOrder.sellToken == tokenA, "Token mismatch: buyOrder");
         } else {
-            revert OrderMismatch();
+            revert InvalidToken();
         }
     }
 
