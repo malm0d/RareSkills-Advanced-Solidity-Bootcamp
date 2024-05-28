@@ -29,6 +29,11 @@ contract OrderBookTest is Test {
 
         privateKeyUser2 = 0x987654321fedcba;
         user2 = vm.addr(privateKeyUser2);
+
+        tokenA.transfer(user1, 1000);
+        tokenA.transfer(user2, 1000);
+        tokenB.transfer(user1, 1000);
+        tokenB.transfer(user2, 1000);
     }
 
     /***************************************************************/
@@ -101,8 +106,49 @@ contract OrderBookTest is Test {
         );
 
         //User1 creates a sell order to sell 100 TokenA for 50 TokenB
+        Order memory sellOrder = Order({
+            maker: user1,
+            deadline: block.timestamp + 1000,
+            sellToken: address(tokenA),
+            buyToken: address(tokenB),
+            sellTokenAmount: 100,
+            buyTokenAmount: 50,
+            nonce: orderBook.nonces(user1)
+        });
+        bytes memory sellOrderSig = signatureUtil.getOrderSignature(
+            orderBook.DOMAIN_SEPARATOR(),
+            sellOrder,
+            privateKeyUser1
+        );
 
         //User2 creates a buy order to buy 100 TokenA for 50 TokenB
+        Order memory buyOrder = Order({
+            maker: user2,
+            deadline: block.timestamp + 1000,
+            sellToken: address(tokenB),
+            buyToken: address(tokenA),
+            sellTokenAmount: 50,
+            buyTokenAmount: 100,
+            nonce: orderBook.nonces(user2)
+        });
+        bytes memory buyOrderSig = signatureUtil.getOrderSignature(
+            orderBook.DOMAIN_SEPARATOR(),
+            buyOrder,
+            privateKeyUser2
+        );
+
+        orderBook.executeMatchedOrder(
+            sellPermit,
+            sellOrder,
+            sellOrderSig,
+            buyPermit,
+            buyOrder,
+            buyOrderSig
+        );
+
+        assertEq(tokenA.balanceOf(address(orderBook)), 0);
+        assertEq(tokenB.balanceOf(address(orderBook)), 0);
+
     }
     
 }

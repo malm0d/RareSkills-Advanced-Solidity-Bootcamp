@@ -51,7 +51,7 @@ contract SignatureUtil is Test {
     /// @dev EIP712: `hashStruct` function to calculate hash of struct
     /// keccak256(abi.encode(typeHash, encodeData(struct)))
     function getOrderStructHash(Order memory _order) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
+        return keccak256(abi.encode(
             _ORDER_TYPEHASH,
             _order.maker,
             _order.deadline,
@@ -92,7 +92,7 @@ contract SignatureUtil is Test {
     /************************************************************/
 
     function getPermitStructHash(Permit memory _permit) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(
+        return keccak256(abi.encode(
             _PERMIT_TYPEHASH,
             _permit.owner,
             _permit.spender,

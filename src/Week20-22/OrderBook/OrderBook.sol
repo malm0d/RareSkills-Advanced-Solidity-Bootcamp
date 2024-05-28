@@ -7,7 +7,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import {console2} from "forge-std/Test.sol";
 /**
 * @dev 
 * `maker`: the address that created the order
@@ -277,8 +277,10 @@ contract OrderBook is EIP712, Nonces {
         Order memory buyOrder
     ) internal view {
         //Permit and Order tokens must match.
-        require(sellPermit.tokenAddr == sellOrder.sellToken, "Token mismatch");
-        require(buyPermit.tokenAddr == buyOrder.buyToken, "Token mismatch");
+        require(sellPermit.tokenAddr == sellOrder.sellToken, "Token mismatch: sellPermit - sellOrder");
+        console2.logAddress(buyPermit.tokenAddr);
+        console2.logAddress(buyOrder.buyToken);
+        require(buyPermit.tokenAddr == buyOrder.buyToken, "Token mismatch: buyPermit - buyOrder");
 
         //Check if tokens being traded are either tokenA or tokenB.
         //If sell order sells tokenA, then buy order must buy tokenA.
