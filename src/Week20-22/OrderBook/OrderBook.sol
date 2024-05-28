@@ -192,7 +192,7 @@ contract OrderBook is EIP712, Nonces {
 
         //Transfer tokens
         IERC20(sellOrder.sellToken).safeTransferFrom(sellOrder.maker, buyOrder.maker, amountA);
-        IERC20(buyOrder.buyToken).safeTransferFrom(buyOrder.maker, sellOrder.maker, amountB);
+        IERC20(buyOrder.sellToken).safeTransferFrom(buyOrder.maker, sellOrder.maker, amountB);
     }
 
     ///@dev EIP712: https://eips.ethereum.org/EIPS/eip-712
@@ -278,9 +278,7 @@ contract OrderBook is EIP712, Nonces {
     ) internal view {
         //Permit and Order tokens must match.
         require(sellPermit.tokenAddr == sellOrder.sellToken, "Token mismatch: sellPermit - sellOrder");
-        console2.logAddress(buyPermit.tokenAddr);
-        console2.logAddress(buyOrder.buyToken);
-        require(buyPermit.tokenAddr == buyOrder.buyToken, "Token mismatch: buyPermit - buyOrder");
+        require(buyPermit.tokenAddr == buyOrder.sellToken, "Token mismatch: buyPermit - buyOrder");
 
         //Check if tokens being traded are either tokenA or tokenB.
         //If sell order sells tokenA, then buy order must buy tokenA.

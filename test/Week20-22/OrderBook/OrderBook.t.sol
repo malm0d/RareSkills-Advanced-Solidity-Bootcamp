@@ -88,7 +88,7 @@ contract OrderBookTest is Test {
             tokenA,
             user1,
             address(orderBook),
-            1000,
+            10000,
             tokenA.nonces(user1),
             block.timestamp + 1000,
             privateKeyUser1
@@ -99,7 +99,7 @@ contract OrderBookTest is Test {
             tokenB,
             user2,
             address(orderBook),
-            1000,
+            10000,
             tokenB.nonces(user2),
             block.timestamp + 1000,
             privateKeyUser2
